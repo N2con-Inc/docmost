@@ -5,6 +5,7 @@ export enum QueueName {
   BILLING_QUEUE = '{billing-queue}',
   FILE_TASK_QUEUE = '{file-task-queue}',
   SEARCH_QUEUE = '{search-queue}',
+  RAG_QUEUE = '{rag-queue}',
 }
 
 export enum QueueJob {
@@ -43,4 +44,5 @@ export enum QueueJob {
   PAGE_SOFT_DELETED = 'page-soft-deleted',
   PAGE_RESTORED = 'page-restored',
   PAGE_DELETED = 'page-deleted',
+  RAG_INDEX_PAGE = 'rag-index-page',
 }

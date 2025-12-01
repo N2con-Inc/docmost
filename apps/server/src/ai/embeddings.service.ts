@@ -1,8 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectKysely } from 'nestjs-kysely';
-import { KyselyDB } from '@docmost/db/types/kysely.types';
+import { KyselyDB } from '../database/types/kysely.types';
 import { sql } from 'kysely';
-import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
+import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import { AIProvider } from './providers/ai-provider.interface';
 
 @Injectable()
@@ -32,8 +32,8 @@ export class EmbeddingsService {
         const embeddings = await provider.embedDocuments(texts);
 
         // 3. Delete existing embeddings for this page
-        await this.db
-            .deleteFrom('embeddings' as any)
+        await (this.db as any)
+            .deleteFrom('embeddings')
             .where('page_id', '=', pageId)
             .execute();
 
@@ -50,7 +50,7 @@ export class EmbeddingsService {
         // Let's try to do it with a raw query for efficiency.
 
         for (const val of values) {
-            await this.db.insertInto('embeddings' as any)
+            await (this.db as any).insertInto('embeddings')
                 .values({
                     page_id: val.page_id,
                     content: val.content,
@@ -72,8 +72,8 @@ export class EmbeddingsService {
         const embedding = await provider.embedQuery(query);
         const embeddingString = JSON.stringify(embedding);
 
-        let queryBuilder = this.db
-            .selectFrom('embeddings' as any)
+        let queryBuilder = (this.db as any)
+            .selectFrom('embeddings')
             .select([
                 'content',
                 'metadata',

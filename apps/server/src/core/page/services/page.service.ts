@@ -51,8 +51,9 @@ export class PageService {
     @InjectKysely() private readonly db: KyselyDB,
     private readonly storageService: StorageService,
     @InjectQueue(QueueName.ATTACHMENT_QUEUE) private attachmentQueue: Queue,
+    @InjectQueue(QueueName.RAG_QUEUE) private ragQueue: Queue,
     private eventEmitter: EventEmitter2,
-  ) {}
+  ) { }
 
   async findById(
     pageId: string,
@@ -101,6 +102,15 @@ export class PageService {
       workspaceId: workspaceId,
       lastUpdatedById: userId,
     });
+
+    try {
+      await this.ragQueue.add(QueueJob.RAG_INDEX_PAGE, {
+        pageId: createdPage.id,
+        workspaceId: workspaceId,
+      });
+    } catch (error) {
+      this.logger.error(`Failed to queue RAG indexing for page ${createdPage.id}`, error);
+    }
 
     return createdPage;
   }
@@ -165,6 +175,15 @@ export class PageService {
       },
       page.id,
     );
+
+    try {
+      await this.ragQueue.add(QueueJob.RAG_INDEX_PAGE, {
+        pageId: page.id,
+        workspaceId: page.workspaceId,
+      });
+    } catch (error) {
+      this.logger.error(`Failed to queue RAG indexing for page ${page.id}`, error);
+    }
 
     return await this.pageRepo.findById(page.id, {
       includeSpace: true,

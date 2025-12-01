@@ -12,15 +12,22 @@ export interface ChatMessage {
     content: string;
 }
 
+export interface AITool {
+    name: string;
+    description: string;
+    schema: any;
+    func: (input: any) => Promise<any>;
+}
+
 export interface AIProvider {
     id: string;
     name: string;
 
     configure(config: AIProviderConfig): void;
 
-    chat(messages: ChatMessage[]): Promise<string>;
+    chat(messages: ChatMessage[], tools?: AITool[]): Promise<string>;
 
-    chatStream(messages: ChatMessage[]): Promise<Readable>;
+    chatStream(messages: ChatMessage[], tools?: AITool[]): Promise<Readable>;
 
     getModels(): Promise<string[]>;
 

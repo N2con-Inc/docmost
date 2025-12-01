@@ -1,7 +1,7 @@
 import { AIProvider, AIProviderConfig, ChatMessage } from './ai-provider.interface';
 import { Readable } from 'stream';
 import { ChatOllama } from '@langchain/ollama';
-import { HumanMessage, SystemMessage, AIMessage } from '@langchain/core/messages';
+import { HumanMessage, SystemMessage, AIMessage, ToolMessage, BaseMessage } from '@langchain/core/messages';
 
 export class OllamaProvider implements AIProvider {
     id = 'ollama';
@@ -15,8 +15,47 @@ export class OllamaProvider implements AIProvider {
         });
     }
 
-    async chat(messages: ChatMessage[]): Promise<string> {
+    async chat(messages: ChatMessage[], tools?: any[]): Promise<string> {
         const langchainMessages = this.mapMessages(messages);
+
+        if (tools && tools.length > 0) {
+            const modelWithTools = this.model.bindTools(tools.map(t => ({
+                name: t.name,
+                description: t.description,
+                schema: t.schema,
+            })));
+
+            const response = await modelWithTools.invoke(langchainMessages);
+
+            if (response.tool_calls && response.tool_calls.length > 0) {
+                // Handle tool calls
+                const toolMessages: BaseMessage[] = [response];
+                for (const toolCall of response.tool_calls) {
+                    const tool = tools.find(t => t.name === toolCall.name);
+                    if (tool) {
+                        try {
+                            const result = await tool.func(toolCall.args);
+                            toolMessages.push(new ToolMessage({
+                                tool_call_id: toolCall.id,
+                                content: JSON.stringify(result),
+                            }));
+                        } catch (error) {
+                            toolMessages.push(new ToolMessage({
+                                tool_call_id: toolCall.id,
+                                content: `Error: ${(error as Error).message}`,
+                            }));
+                        }
+                    }
+                }
+
+                // Call model again with tool results
+                const finalResponse = await modelWithTools.invoke([...langchainMessages, ...toolMessages]);
+                return finalResponse.content as string;
+            }
+
+            return response.content as string;
+        }
+
         const response = await this.model.invoke(langchainMessages);
         return response.content as string;
     }

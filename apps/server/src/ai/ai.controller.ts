@@ -1,6 +1,7 @@
 import { Body, Controller, Post, Res, UseGuards } from '@nestjs/common';
 import { AIService } from './ai.service';
 import { ChatRequestDto } from './dto/chat-request.dto';
+import { SearchRequestDto } from './dto/search-request.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { User } from '../auth/decorators/user.decorator';
 import { UserEntity } from '../users/user.entity';
@@ -43,5 +44,10 @@ export class AIController {
     @Post('models')
     async getModels(@User() user: UserEntity) {
         return this.aiService.getModels(user.id, user.workspaceId);
+    }
+
+    @Post('search')
+    async search(@User() user: UserEntity, @Body() body: SearchRequestDto) {
+        return this.aiService.search(user.id, user.workspaceId, body.query, body.limit);
     }
 }

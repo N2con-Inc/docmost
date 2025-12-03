@@ -1,13 +1,15 @@
-import { Injectable, Logger, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, ForbiddenException, Inject, forwardRef } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AIProvider, AIProviderConfig, ChatMessage } from './providers/ai-provider.interface';
 import { OllamaProvider } from './providers/ollama.provider';
 import { AnthropicProvider } from './providers/anthropic.provider';
 import { OpenAIProvider } from './providers/openai.provider';
-import { WorkspacesService } from '../core/workspaces/workspaces.service';
+import { WorkspaceService } from '../core/workspace/services/workspace.service';
 import { EmbeddingsService } from './embeddings.service';
 import { WebSearchService } from './tools/web-search.service';
 import { McpService } from './mcp/mcp.service';
+import { RefactorAgent } from './agents/refactor.agent';
+import { ConsistencyAgent } from './agents/consistency.agent';
 
 @Injectable()
 export class AIService {
@@ -16,10 +18,14 @@ export class AIService {
 
     constructor(
         private readonly configService: ConfigService,
-        private readonly workspacesService: WorkspacesService,
+        private readonly workspaceService: WorkspaceService,
         private readonly embeddingsService: EmbeddingsService,
         private readonly webSearchService: WebSearchService,
         private readonly mcpService: McpService,
+        @Inject(forwardRef(() => RefactorAgent))
+        private readonly refactorAgent: RefactorAgent,
+        @Inject(forwardRef(() => ConsistencyAgent))
+        private readonly consistencyAgent: ConsistencyAgent,
     ) {
         // Initialize providers
         this.registerProvider(new OllamaProvider());
@@ -34,8 +40,11 @@ export class AIService {
     async chat(userId: string, workspaceId: string, messages: ChatMessage[]): Promise<string> {
         const provider = await this.getConfiguredProvider(userId, workspaceId);
         const webSearchTool = this.webSearchService.getTool();
+        const refactorTool = this.refactorAgent.getToolWithContext(userId, workspaceId);
+        const consistencyTool = this.consistencyAgent.getToolWithContext(userId, workspaceId);
         const mcpTools = await this.mcpService.getTools(userId, workspaceId);
-        const tools = [webSearchTool, ...mcpTools];
+
+        const tools = [webSearchTool, refactorTool, consistencyTool, ...mcpTools];
         return provider.chat(messages, tools);
     }
 
@@ -56,7 +65,7 @@ export class AIService {
 
     async getProviderForWorkspace(workspaceId: string): Promise<AIProvider | null> {
         try {
-            const workspace = await this.workspacesService.findById(workspaceId);
+            const workspace = await this.workspaceService.findById(workspaceId);
             if (!workspace) return null;
 
             const aiSettings = workspace.settings?.['ai'];
@@ -70,7 +79,7 @@ export class AIService {
             provider.configure(aiSettings.config);
             return provider;
         } catch (error) {
-            this.logger.error(`Failed to get provider for workspace ${workspaceId}: ${error.message}`);
+            this.logger.error(`Failed to get provider for workspace ${workspaceId}: ${(error as any).message}`);
             return null;
         }
     }
@@ -79,7 +88,7 @@ export class AIService {
         // Verify user has access to workspace (this check is usually done in guards, but good to have)
         // In a real scenario, we might want to check specific AI permissions here.
 
-        const workspace = await this.workspacesService.findById(workspaceId);
+        const workspace = await this.workspaceService.findById(workspaceId);
         if (!workspace) {
             throw new NotFoundException('Workspace not found');
         }

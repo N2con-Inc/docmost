@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { http } from '@/lib/http';
+import api from '@/lib/api-client';
 
 export interface ChatMessage {
     role: 'system' | 'user' | 'assistant';
@@ -13,7 +13,7 @@ export function useAI() {
 
     const chatMutation = useMutation({
         mutationFn: async (msgs: ChatMessage[]) => {
-            const response = await http.post('/ai/chat', { messages: msgs });
+            const response = await api.post('/ai/chat', { messages: msgs });
             return response.data;
         },
         onSuccess: (data) => {

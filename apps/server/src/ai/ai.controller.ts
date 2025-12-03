@@ -2,9 +2,9 @@ import { Body, Controller, Post, Res, UseGuards } from '@nestjs/common';
 import { AIService } from './ai.service';
 import { ChatRequestDto } from './dto/chat-request.dto';
 import { SearchRequestDto } from './dto/search-request.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { User } from '../auth/decorators/user.decorator';
-import { UserEntity } from '../users/user.entity';
+import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { AuthUser } from '../common/decorators/auth-user.decorator';
+import { User } from '@docmost/db/types/entity.types';
 import { Response } from 'express';
 
 @Controller('ai')
@@ -13,7 +13,7 @@ export class AIController {
     constructor(private readonly aiService: AIService) { }
 
     @Post('chat')
-    async chat(@User() user: UserEntity, @Body() body: ChatRequestDto) {
+    async chat(@AuthUser() user: User, @Body() body: ChatRequestDto) {
         // Assuming workspaceId is available in user context or passed in body. 
         // For now, let's assume the user's active workspace or passed via header/body.
         // Ideally, we should get workspaceId from the request context or body.
@@ -31,7 +31,7 @@ export class AIController {
     }
 
     @Post('chat/stream')
-    async chatStream(@User() user: UserEntity, @Body() body: ChatRequestDto, @Res() res: Response) {
+    async chatStream(@AuthUser() user: User, @Body() body: ChatRequestDto, @Res() res: Response) {
         const stream = await this.aiService.chatStream(user.id, user.workspaceId, body.messages);
 
         res.setHeader('Content-Type', 'text/event-stream');
@@ -42,12 +42,12 @@ export class AIController {
     }
 
     @Post('models')
-    async getModels(@User() user: UserEntity) {
+    async getModels(@AuthUser() user: User) {
         return this.aiService.getModels(user.id, user.workspaceId);
     }
 
     @Post('search')
-    async search(@User() user: UserEntity, @Body() body: SearchRequestDto) {
+    async search(@AuthUser() user: User, @Body() body: SearchRequestDto) {
         return this.aiService.search(user.id, user.workspaceId, body.query, body.limit);
     }
 }

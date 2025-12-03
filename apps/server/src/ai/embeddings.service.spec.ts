@@ -16,7 +16,7 @@ jest.mock('@langchain/textsplitters', () => {
 const mockDb = {
     deleteFrom: jest.fn().mockReturnThis(),
     where: jest.fn().mockReturnThis(),
-    execute: jest.fn().mockResolvedValue(undefined),
+    execute: jest.fn().mockResolvedValue([]),
     insertInto: jest.fn().mockReturnThis(),
     values: jest.fn().mockReturnThis(),
     selectFrom: jest.fn().mockReturnThis(),

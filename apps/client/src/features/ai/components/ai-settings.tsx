@@ -1,9 +1,9 @@
 import React, { useEffect } from 'react';
 import { useForm } from '@mantine/form';
-import { Box, Button, Group, Select, Stack, Text, TextInput, Title, Switch, PasswordInput } from '@mantine/core';
+import { Box, Button, Group, Select, Stack, Text, TextInput, Title, Switch, PasswordInput, Autocomplete } from '@mantine/core';
 import { showNotification } from '@mantine/notifications';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { http } from '@/lib/http';
+import api from '@/lib/api-client';
 
 interface AISettingsForm {
     enabled: boolean;
@@ -37,7 +37,7 @@ export function AISettings() {
             // Actually, the plan said we store it in workspace.settings.
             // We probably need a dedicated endpoint or use the existing workspace update one.
             // Let's assume we have a way to get current workspace settings.
-            const response = await http.get('/workspaces/current');
+            const response = await api.get('/workspaces/current');
             return response.data.settings?.ai || null;
         },
     });
@@ -45,7 +45,7 @@ export function AISettings() {
     const { data: availableModels, refetch: refetchModels, isFetching: isFetchingModels } = useQuery({
         queryKey: ['ai-models'],
         queryFn: async () => {
-            const response = await http.post('/ai/models');
+            const response = await api.post('/ai/models');
             return response.data;
         },
         enabled: false, // Only fetch on demand
@@ -67,7 +67,7 @@ export function AISettings() {
                 ai: values
             };
 
-            await http.patch('/workspaces/current', { settings: newSettings });
+            await api.patch('/workspaces/current', { settings: newSettings });
         },
         onSuccess: () => {
             showNotification({
@@ -121,14 +121,12 @@ export function AISettings() {
                                 {...form.getInputProps('config.baseUrl')}
                                 disabled={!form.values.enabled}
                             />
-                            <Select
+                            <Autocomplete
                                 label="Model Name"
                                 placeholder="llama3"
                                 data={availableModels || []}
                                 {...form.getInputProps('config.model')}
                                 disabled={!form.values.enabled}
-                                searchable
-                                creatable
                             />
                         </>
                     )}
@@ -141,20 +139,12 @@ export function AISettings() {
                                 {...form.getInputProps('config.apiKey')}
                                 disabled={!form.values.enabled}
                             />
-                            <Select
+                            <Autocomplete
                                 label="Model Name"
                                 placeholder="claude-3-5-sonnet-20240620"
                                 data={availableModels || []}
                                 {...form.getInputProps('config.model')}
                                 disabled={!form.values.enabled}
-                                searchable
-                                creatable
-                                getCreateLabel={(query) => `+ Use "${query}"`}
-                                onCreate={(query) => {
-                                    const item = { value: query, label: query };
-                                    // setAvailableModels((current) => [...current, item]); // If we had local state
-                                    return item;
-                                }}
                             />
                         </>
                     )}
@@ -174,20 +164,12 @@ export function AISettings() {
                                 {...form.getInputProps('config.apiKey')}
                                 disabled={!form.values.enabled}
                             />
-                            <Select
+                            <Autocomplete
                                 label="Model Name"
                                 placeholder="gpt-4o"
                                 data={availableModels || []}
                                 {...form.getInputProps('config.model')}
                                 disabled={!form.values.enabled}
-                                searchable
-                                creatable
-                                getCreateLabel={(query) => `+ Use "${query}"`}
-                                onCreate={(query) => {
-                                    const item = { value: query, label: query };
-                                    // setAvailableModels((current) => [...current, item]); // If we had local state
-                                    return item;
-                                }}
                             />
                         </>
                     )}

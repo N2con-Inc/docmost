@@ -3,7 +3,8 @@ import { AIController } from './ai.controller';
 import { AIService } from './ai.service';
 import { EmbeddingsService } from './embeddings.service';
 import { ConfigModule } from '@nestjs/config';
-import { WorkspacesModule } from '../core/workspaces/workspaces.module';
+import { WorkspaceModule } from '../core/workspace/workspace.module';
+import { PageModule } from '../core/page/page.module';
 
 import { WebSearchService } from './tools/web-search.service';
 import { RefactorAgent } from './agents/refactor.agent';
@@ -16,7 +17,7 @@ import { MicrosoftGraphMCP } from './mcp/servers/microsoft-graph.mcp';
 @Module({
     imports: [
         ConfigModule,
-        WorkspacesModule,
+        WorkspaceModule,
         PageModule,
     ],
     controllers: [AIController],

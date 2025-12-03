@@ -1,15 +1,29 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import { AIService } from '../ai.service';
 import { PageService } from '../../core/page/services/page.service';
+import { AITool } from '../providers/ai-provider.interface';
+import { z } from 'zod';
 
 @Injectable()
 export class ConsistencyAgent {
     private readonly logger = new Logger(ConsistencyAgent.name);
 
     constructor(
+        @Inject(forwardRef(() => AIService))
         private readonly aiService: AIService,
         private readonly pageService: PageService,
     ) { }
+
+    getToolWithContext(userId: string, workspaceId: string): AITool {
+        return {
+            name: 'check_consistency',
+            description: 'Analyze a page for consistency in tone, terminology, and formatting.',
+            schema: z.object({
+                pageId: z.string().describe('The ID of the page to analyze'),
+            }),
+            func: async ({ pageId }) => this.analyzeConsistency(userId, workspaceId, pageId),
+        };
+    }
 
     async analyzeConsistency(userId: string, workspaceId: string, pageId: string): Promise<string> {
         const page = await this.pageService.findById(pageId, true);

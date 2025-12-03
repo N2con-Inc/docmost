@@ -47,7 +47,7 @@ export class WebSearchService {
             return resultString;
         } catch (error) {
             this.logger.error('Failed to perform web search', error);
-            return `Failed to perform web search: ${error.message}`;
+            return `Failed to perform web search: ${(error as any).message}`;
         }
     }
 

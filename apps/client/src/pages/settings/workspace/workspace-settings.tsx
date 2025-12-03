@@ -26,9 +26,6 @@ export default function WorkspaceSettings() {
         </>
       )}
       <ManageHostname />
-    </>
-  )
-}
       <Divider my="md" />
       <AISettings />
     </>

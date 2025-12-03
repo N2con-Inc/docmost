@@ -78,7 +78,7 @@ export class McpService implements OnModuleInit {
                     });
                 }
             } catch (error) {
-                this.logger.error(`Failed to list tools for client: ${error.message}`);
+                this.logger.error(`Failed to list tools for client: ${(error as any).message}`);
             }
         }
 

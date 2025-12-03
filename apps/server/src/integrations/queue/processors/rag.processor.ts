@@ -83,7 +83,7 @@ export class RagProcessor extends WorkerHost {
             await this.embeddingsService.savePageEmbeddings(provider, pageId, contentText, metadata);
 
         } catch (error) {
-            this.logger.error(`Failed to index page ${pageId}: ${error.message}`, error.stack);
+            this.logger.error(`Failed to index page ${pageId}: ${(error as any).message}`, (error as any).stack);
             throw error;
         }
     }

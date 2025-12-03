@@ -24,3 +24,11 @@ export const AIExtension = Extension.create<AIExtensionOptions>({
         };
     },
 });
+
+declare module '@tiptap/core' {
+    interface Commands<ReturnType> {
+        ai: {
+            askAI: (text: string) => ReturnType;
+        };
+    }
+}

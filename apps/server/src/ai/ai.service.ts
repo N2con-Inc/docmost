@@ -59,7 +59,7 @@ export class AIService {
     }
 
     async search(userId: string, workspaceId: string, query: string, limit: number = 5) {
-        const provider = await this.getConfiguredProvider(userId, workspaceId);
+        const provider = await this.getConfiguredEmbeddingProvider(userId, workspaceId);
         return this.embeddingsService.search(provider, query, limit);
     }
 
@@ -80,6 +80,39 @@ export class AIService {
             return provider;
         } catch (error) {
             this.logger.error(`Failed to get provider for workspace ${workspaceId}: ${(error as any).message}`);
+            return null;
+        }
+    }
+
+    async getEmbeddingProviderForWorkspace(workspaceId: string): Promise<AIProvider | null> {
+        try {
+            const workspace = await this.workspaceService.findById(workspaceId);
+            if (!workspace) return null;
+
+            const aiSettings = workspace.settings?.['ai'];
+            if (!aiSettings || !aiSettings.enabled) return null;
+
+            const providerId = aiSettings.embeddingProvider || 'same';
+
+            if (providerId === 'same') {
+                return this.getProviderForWorkspace(workspaceId);
+            }
+
+            const provider = this.providers.get(providerId);
+            if (!provider) return null;
+
+            // Construct embedding config
+            const config = {
+                ...aiSettings.config,
+                apiKey: aiSettings.config.embeddingApiKey || aiSettings.config.apiKey,
+                baseUrl: aiSettings.config.embeddingBaseUrl || aiSettings.config.baseUrl,
+                model: aiSettings.config.embeddingModel,
+            };
+
+            provider.configure(config);
+            return provider;
+        } catch (error) {
+            this.logger.error(`Failed to get embedding provider for workspace ${workspaceId}: ${(error as any).message}`);
             return null;
         }
     }
@@ -106,6 +139,40 @@ export class AIService {
         }
 
         provider.configure(aiSettings.config);
+        return provider;
+    }
+
+    private async getConfiguredEmbeddingProvider(userId: string, workspaceId: string): Promise<AIProvider> {
+        const workspace = await this.workspaceService.findById(workspaceId);
+        if (!workspace) {
+            throw new NotFoundException('Workspace not found');
+        }
+
+        const aiSettings = workspace.settings?.['ai'];
+        if (!aiSettings || !aiSettings.enabled) {
+            throw new ForbiddenException('AI features are not enabled for this workspace');
+        }
+
+        const providerId = aiSettings.embeddingProvider || 'same';
+
+        if (providerId === 'same') {
+            return this.getConfiguredProvider(userId, workspaceId);
+        }
+
+        const provider = this.providers.get(providerId);
+        if (!provider) {
+            throw new NotFoundException(`Embedding Provider ${providerId} not found`);
+        }
+
+        // Construct embedding config
+        const config = {
+            ...aiSettings.config,
+            apiKey: aiSettings.config.embeddingApiKey || aiSettings.config.apiKey,
+            baseUrl: aiSettings.config.embeddingBaseUrl || aiSettings.config.baseUrl,
+            model: aiSettings.config.embeddingModel,
+        };
+
+        provider.configure(config);
         return provider;
     }
 }

@@ -8,10 +8,14 @@ import api from '@/lib/api-client';
 interface AISettingsForm {
     enabled: boolean;
     provider: string;
+    embeddingProvider: string;
     config: {
         baseUrl?: string;
         apiKey?: string;
         model?: string;
+        embeddingBaseUrl?: string;
+        embeddingApiKey?: string;
+        embeddingModel?: string;
     };
 }
 
@@ -21,10 +25,14 @@ export function AISettings() {
         initialValues: {
             enabled: false,
             provider: 'ollama',
+            embeddingProvider: 'same',
             config: {
                 baseUrl: 'http://localhost:11434',
                 model: 'llama3',
                 apiKey: '',
+                embeddingBaseUrl: '',
+                embeddingApiKey: '',
+                embeddingModel: '',
             },
         },
     });
@@ -169,6 +177,59 @@ export function AISettings() {
                                 placeholder="gpt-4o"
                                 data={availableModels || []}
                                 {...form.getInputProps('config.model')}
+                                disabled={!form.values.enabled}
+                            />
+                        </>
+                    )}
+
+                    <Title order={4} mt="lg">Embeddings & Search</Title>
+                    <Select
+                        label="Embedding Provider"
+                        data={[
+                            { value: 'same', label: 'Same as Chat Provider' },
+                            { value: 'openai', label: 'OpenAI / Compatible' },
+                            { value: 'ollama', label: 'Ollama (Local)' },
+                        ]}
+                        {...form.getInputProps('embeddingProvider')}
+                        disabled={!form.values.enabled}
+                    />
+
+                    {form.values.embeddingProvider === 'openai' && form.values.provider !== 'openai' && (
+                        <>
+                            <TextInput
+                                label="Embedding Base URL"
+                                description="Optional. Leave empty for default OpenAI."
+                                placeholder="https://api.openai.com/v1"
+                                {...form.getInputProps('config.embeddingBaseUrl')}
+                                disabled={!form.values.enabled}
+                            />
+                            <PasswordInput
+                                label="Embedding API Key"
+                                placeholder="sk-..."
+                                {...form.getInputProps('config.embeddingApiKey')}
+                                disabled={!form.values.enabled}
+                            />
+                            <TextInput
+                                label="Embedding Model"
+                                placeholder="text-embedding-3-small"
+                                {...form.getInputProps('config.embeddingModel')}
+                                disabled={!form.values.enabled}
+                            />
+                        </>
+                    )}
+
+                    {form.values.embeddingProvider === 'ollama' && form.values.provider !== 'ollama' && (
+                        <>
+                            <TextInput
+                                label="Embedding Base URL"
+                                description="URL where Ollama is running (e.g., http://localhost:11434)"
+                                {...form.getInputProps('config.embeddingBaseUrl')}
+                                disabled={!form.values.enabled}
+                            />
+                            <TextInput
+                                label="Embedding Model"
+                                placeholder="nomic-embed-text"
+                                {...form.getInputProps('config.embeddingModel')}
                                 disabled={!form.values.enabled}
                             />
                         </>

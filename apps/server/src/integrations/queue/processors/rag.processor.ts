@@ -57,7 +57,7 @@ export class RagProcessor extends WorkerHost {
         try {
             // We'll need to add a method to AIService to get provider by workspaceId for internal use.
             // For now, let's assume we can add `getProviderForWorkspace(workspaceId)` to AIService.
-            const provider = await this.aiService.getProviderForWorkspace(workspaceId);
+            const provider = await this.aiService.getEmbeddingProviderForWorkspace(workspaceId);
 
             if (!provider) {
                 this.logger.warn(`No AI provider configured for workspace ${workspaceId}, skipping indexing`);

@@ -37,16 +37,12 @@ export function AISettings() {
         },
     });
 
-    const { data: settings, isLoading } = useQuery({
-        queryKey: ['workspace-settings', 'ai'],
+    // Fetch current workspace to get AI settings
+    const { data: workspace, isLoading } = useQuery({
+        queryKey: ['workspace'],
         queryFn: async () => {
-            // Fetch workspace settings. Assuming there's an endpoint or we use the general workspace settings endpoint
-            // For now, let's assume we fetch the workspace and extract settings.
-            // Actually, the plan said we store it in workspace.settings.
-            // We probably need a dedicated endpoint or use the existing workspace update one.
-            // Let's assume we have a way to get current workspace settings.
-            const response = await api.get('/workspaces/current');
-            return response.data.settings?.ai || null;
+            const response = await api.post('/workspace/info');
+            return response.data;
         },
     });
 
@@ -60,201 +56,237 @@ export function AISettings() {
     });
 
     useEffect(() => {
-        if (settings) {
-            form.setValues(settings);
+        if (workspace?.settings?.ai) {
+            form.setValues(workspace.settings.ai);
         }
-    }, [settings]);
+    }, [workspace]);
 
     const mutation = useMutation({
         mutationFn: async (values: AISettingsForm) => {
-            // We need to update the workspace settings.
-            // This usually involves patching the workspace.
-            const currentWorkspace = queryClient.getQueryData<any>(['workspaces', 'current']);
+            // Use the correct workspace update endpoint
             const newSettings = {
-                ...currentWorkspace?.settings,
+                ...workspace?.settings,
                 ai: values
             };
 
-            await api.patch('/workspaces/current', { settings: newSettings });
+            await api.post('/workspace/update', { settings: newSettings });
         },
         onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['workspace'] });
             showNotification({
-                title: 'Settings saved',
-                message: 'AI settings have been updated successfully.',
+                title: 'Success',
+                message: 'AI settings saved successfully',
                 color: 'green',
             });
-            queryClient.invalidateQueries({ queryKey: ['workspaces', 'current'] });
         },
-        onError: () => {
+        onError: (error: any) => {
             showNotification({
                 title: 'Error',
-                message: 'Failed to save settings.',
+                message: error?.response?.data?.message || 'Failed to save settings',
                 color: 'red',
             });
         },
     });
 
-    const handleSubmit = (values: AISettingsForm) => {
-        mutation.mutate(values);
+    const handleSubmit = async (values: AISettingsForm) => {
+        await mutation.mutateAsync(values);
     };
 
-    if (isLoading) return <Text>Loading settings...</Text>;
+    const fetchModels = async () => {
+        try {
+            // Save current settings first
+            await mutation.mutateAsync(form.values);
+            // Then fetch models
+            const result = await refetchModels();
+            
+            if (result.data && result.data.length > 0) {
+                showNotification({
+                    title: 'Success',
+                    message: `Found ${result.data.length} models`,
+                    color: 'green',
+                });
+            } else {
+                showNotification({
+                    title: 'Info',
+                    message: 'No models found. Check your provider configuration.',
+                    color: 'blue',
+                });
+            }
+        } catch (error: any) {
+            showNotification({
+                title: 'Error',
+                message: error?.response?.data?.message || 'Failed to fetch models',
+                color: 'red',
+            });
+        }
+    };
+
+    if (isLoading) {
+        return <Text>Loading...</Text>;
+    }
 
     return (
-        <Box maw={600}>
-            <Title order={3} mb="lg">AI Integration Settings</Title>
+        <Box>
+            <Title order={3} mb="md">AI Settings</Title>
             <form onSubmit={form.onSubmit(handleSubmit)}>
                 <Stack gap="md">
                     <Switch
                         label="Enable AI Features"
+                        description="Enable AI-powered features like chat and embeddings"
                         {...form.getInputProps('enabled', { type: 'checkbox' })}
                     />
 
-                    <Select
-                        label="AI Provider"
-                        data={[
-                            { value: 'ollama', label: 'Ollama (Local)' },
-                            { value: 'anthropic', label: 'Anthropic (Claude)' },
-                            { value: 'openai', label: 'OpenAI / Compatible' },
-                        ]}
-                        {...form.getInputProps('provider')}
-                        disabled={!form.values.enabled}
-                    />
-
-                    {form.values.provider === 'ollama' && (
+                    {form.values.enabled && (
                         <>
-                            <TextInput
-                                label="Base URL"
-                                description="URL where Ollama is running (e.g., http://localhost:11434)"
-                                {...form.getInputProps('config.baseUrl')}
-                                disabled={!form.values.enabled}
+                            <Select
+                                label="AI Provider"
+                                placeholder="Select a provider"
+                                data={[
+                                    { value: 'ollama', label: 'Ollama' },
+                                    { value: 'openai', label: 'OpenAI' },
+                                    { value: 'anthropic', label: 'Anthropic' },
+                                ]}
+                                {...form.getInputProps('provider')}
                             />
-                            <Autocomplete
-                                label="Model Name"
-                                placeholder="llama3"
-                                data={availableModels || []}
-                                {...form.getInputProps('config.model')}
-                                disabled={!form.values.enabled}
+
+                            {form.values.provider === 'ollama' && (
+                                <>
+                                    <TextInput
+                                        label="Base URL"
+                                        placeholder="http://localhost:11434"
+                                        {...form.getInputProps('config.baseUrl')}
+                                    />
+                                    {availableModels && availableModels.length > 0 ? (
+                                        <Autocomplete
+                                            label="Model"
+                                            placeholder="Select or type a model"
+                                            data={availableModels}
+                                            {...form.getInputProps('config.model')}
+                                        />
+                                    ) : (
+                                        <TextInput
+                                            label="Model"
+                                            placeholder="llama3"
+                                            description="Click 'Fetch Models' to load available models"
+                                            {...form.getInputProps('config.model')}
+                                        />
+                                    )}
+                                </>
+                            )}
+
+                            {form.values.provider === 'openai' && (
+                                <>
+                                    <PasswordInput
+                                        label="API Key"
+                                        placeholder="sk-..."
+                                        {...form.getInputProps('config.apiKey')}
+                                    />
+                                    {availableModels && availableModels.length > 0 ? (
+                                        <Autocomplete
+                                            label="Model"
+                                            placeholder="Select or type a model"
+                                            data={availableModels}
+                                            {...form.getInputProps('config.model')}
+                                        />
+                                    ) : (
+                                        <TextInput
+                                            label="Model"
+                                            placeholder="gpt-4"
+                                            description="Click 'Fetch Models' to load available models"
+                                            {...form.getInputProps('config.model')}
+                                        />
+                                    )}
+                                </>
+                            )}
+
+                            {form.values.provider === 'anthropic' && (
+                                <>
+                                    <PasswordInput
+                                        label="API Key"
+                                        placeholder="sk-ant-..."
+                                        {...form.getInputProps('config.apiKey')}
+                                    />
+                                    {availableModels && availableModels.length > 0 ? (
+                                        <Autocomplete
+                                            label="Model"
+                                            placeholder="Select or type a model"
+                                            data={availableModels}
+                                            {...form.getInputProps('config.model')}
+                                        />
+                                    ) : (
+                                        <TextInput
+                                            label="Model"
+                                            placeholder="claude-3-opus-20240229"
+                                            description="Click 'Fetch Models' to load available models"
+                                            {...form.getInputProps('config.model')}
+                                        />
+                                    )}
+                                </>
+                            )}
+
+                            <Select
+                                label="Embedding Provider"
+                                description="Provider for document embeddings and semantic search"
+                                data={[
+                                    { value: 'same', label: 'Same as AI Provider' },
+                                    { value: 'openai', label: 'OpenAI' },
+                                    { value: 'ollama', label: 'Ollama' },
+                                ]}
+                                {...form.getInputProps('embeddingProvider')}
                             />
+
+                            {form.values.embeddingProvider !== 'same' && (
+                                <>
+                                    {form.values.embeddingProvider === 'ollama' && (
+                                        <>
+                                            <TextInput
+                                                label="Embedding Base URL"
+                                                placeholder="http://localhost:11434"
+                                                {...form.getInputProps('config.embeddingBaseUrl')}
+                                            />
+                                            <TextInput
+                                                label="Embedding Model"
+                                                placeholder="nomic-embed-text"
+                                                {...form.getInputProps('config.embeddingModel')}
+                                            />
+                                        </>
+                                    )}
+
+                                    {form.values.embeddingProvider === 'openai' && (
+                                        <>
+                                            <PasswordInput
+                                                label="Embedding API Key"
+                                                placeholder="sk-..."
+                                                {...form.getInputProps('config.embeddingApiKey')}
+                                            />
+                                            <TextInput
+                                                label="Embedding Model"
+                                                placeholder="text-embedding-ada-002"
+                                                {...form.getInputProps('config.embeddingModel')}
+                                            />
+                                        </>
+                                    )}
+                                </>
+                            )}
                         </>
                     )}
 
-                    {form.values.provider === 'anthropic' && (
-                        <>
-                            <PasswordInput
-                                label="API Key"
-                                placeholder="sk-ant-..."
-                                {...form.getInputProps('config.apiKey')}
-                                disabled={!form.values.enabled}
-                            />
-                            <Autocomplete
-                                label="Model Name"
-                                placeholder="claude-3-5-sonnet-20240620"
-                                data={availableModels || []}
-                                {...form.getInputProps('config.model')}
-                                disabled={!form.values.enabled}
-                            />
-                        </>
-                    )}
-
-                    {form.values.provider === 'openai' && (
-                        <>
-                            <TextInput
-                                label="Base URL"
-                                description="Optional. Leave empty for default OpenAI."
-                                placeholder="https://api.openai.com/v1"
-                                {...form.getInputProps('config.baseUrl')}
-                                disabled={!form.values.enabled}
-                            />
-                            <PasswordInput
-                                label="API Key"
-                                placeholder="sk-..."
-                                {...form.getInputProps('config.apiKey')}
-                                disabled={!form.values.enabled}
-                            />
-                            <Autocomplete
-                                label="Model Name"
-                                placeholder="gpt-4o"
-                                data={availableModels || []}
-                                {...form.getInputProps('config.model')}
-                                disabled={!form.values.enabled}
-                            />
-                        </>
-                    )}
-
-                    <Title order={4} mt="lg">Embeddings & Search</Title>
-                    <Select
-                        label="Embedding Provider"
-                        data={[
-                            { value: 'same', label: 'Same as Chat Provider' },
-                            { value: 'openai', label: 'OpenAI / Compatible' },
-                            { value: 'ollama', label: 'Ollama (Local)' },
-                        ]}
-                        {...form.getInputProps('embeddingProvider')}
-                        disabled={!form.values.enabled}
-                    />
-
-                    {form.values.embeddingProvider === 'openai' && form.values.provider !== 'openai' && (
-                        <>
-                            <TextInput
-                                label="Embedding Base URL"
-                                description="Optional. Leave empty for default OpenAI."
-                                placeholder="https://api.openai.com/v1"
-                                {...form.getInputProps('config.embeddingBaseUrl')}
-                                disabled={!form.values.enabled}
-                            />
-                            <PasswordInput
-                                label="Embedding API Key"
-                                placeholder="sk-..."
-                                {...form.getInputProps('config.embeddingApiKey')}
-                                disabled={!form.values.enabled}
-                            />
-                            <TextInput
-                                label="Embedding Model"
-                                placeholder="text-embedding-3-small"
-                                {...form.getInputProps('config.embeddingModel')}
-                                disabled={!form.values.enabled}
-                            />
-                        </>
-                    )}
-
-                    {form.values.embeddingProvider === 'ollama' && form.values.provider !== 'ollama' && (
-                        <>
-                            <TextInput
-                                label="Embedding Base URL"
-                                description="URL where Ollama is running (e.g., http://localhost:11434)"
-                                {...form.getInputProps('config.embeddingBaseUrl')}
-                                disabled={!form.values.enabled}
-                            />
-                            <TextInput
-                                label="Embedding Model"
-                                placeholder="nomic-embed-text"
-                                {...form.getInputProps('config.embeddingModel')}
-                                disabled={!form.values.enabled}
-                            />
-                        </>
-                    )}
-
-                    <Group justify="flex-end" mt="md">
-                        <Button variant="default" onClick={() => fetchModels()} loading={isFetchingModels}>
-                            Fetch Models
-                        </Button>
+                    <Group justify="flex-start" mt="md">
                         <Button type="submit" loading={mutation.isPending}>
                             Save Changes
                         </Button>
+                        {form.values.enabled && (
+                            <Button
+                                variant="light"
+                                onClick={fetchModels}
+                                loading={isFetchingModels || mutation.isPending}
+                            >
+                                Fetch Models
+                            </Button>
+                        )}
                     </Group>
                 </Stack>
             </form>
         </Box>
     );
-
-    async function fetchModels() {
-        // We need to save the config first temporarily or pass it to the backend to test connection/fetch models
-        // But the backend uses the stored config. 
-        // So we should probably save first, then fetch.
-        // Or we can have an endpoint that accepts config and returns models (better for testing).
-        // For now, let's assume we save first.
-        await mutation.mutateAsync(form.values);
-        refetchModels();
-    }
 }

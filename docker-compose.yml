@@ -1,16 +1,34 @@
+version: '3'
+
 services:
   docmost:
-    image: docmost/docmost:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: docmost-ai:latest
     depends_on:
       - db
       - redis
     environment:
-      APP_URL: 'http://localhost:3000'
-      APP_SECRET: 'REPLACE_WITH_LONG_SECRET'
-      DATABASE_URL: 'postgresql://docmost:STRONG_DB_PASSWORD@db:5432/docmost?schema=public'
+      APP_URL: 'https://wiki.n2con.com'
+      APP_SECRET: '60e3083c262227a3ba4255c0e1d972ce4fd2e15eb03b31b2aaf3b74cbe4d18f6'
+      DATABASE_URL: 'postgresql://docmost:yQeB3UCNKmxxVQEpLVR6@db:5432/docmost?schema=public'
       REDIS_URL: 'redis://redis:6379'
+      MAIL_DRIVER: 'smtp'
+      SMTP_HOST: 'smtprelay01.n2con.net'
+      SMTP_PORT: 587
+      SMTP_USERNAME: 'docmost@n2con.com'
+      SMTP_PASSWORD: 'RmAbaotfL4ntQot6jFID'
+      MAIL_FROM_ADDRESS: 'noreply@n2con.com'
+      MAIL_FROM_NAME: 'N2con Wiki'
+      STORAGE_DRIVER: 's3'
+      AWS_S3_ACCESS_KEY_ID: '63E6F41J21FAI1YZL0BR'
+      AWS_S3_SECRET_ACCESS_KEY: 'uLEIeKCzL6XHaJqdSp8ryHzabLdJcjM6VPq5suva'
+      AWS_S3_REGION: 'us-west-1'
+      AWS_S3_BUCKET: 'n2con-docmost'
+      AWS_S3_ENDPOINT: 'https://s3.us-west-1.wasabisys.com'
     ports:
-      - "3000:3000"
+      - "3050:3000"
     restart: unless-stopped
     volumes:
       - docmost:/app/data/storage
@@ -20,7 +38,7 @@ services:
     environment:
       POSTGRES_DB: docmost
       POSTGRES_USER: docmost
-      POSTGRES_PASSWORD: STRONG_DB_PASSWORD
+      POSTGRES_PASSWORD: 'yQeB3UCNKmxxVQEpLVR6'
     restart: unless-stopped
     volumes:
       - db_data:/var/lib/postgresql/data

@@ -3,7 +3,7 @@ import { Kysely, sql } from 'kysely';
 export async function up(db: Kysely<any>): Promise<void> {
     await db.schema
         .createTable('embeddings')
-        .addColumn('id', 'uuid', (col) => col.primaryKey().defaultTo(sql`uuid_generate_v7()`))
+        .addColumn('id', 'uuid', (col) => col.primaryKey().defaultTo(sql`gen_uuid_v7()`))
         .addColumn('page_id', 'uuid', (col) => col.notNull().references('pages.id').onDelete('cascade'))
         .addColumn('content', 'text', (col) => col.notNull())
         .addColumn('embedding', sql`vector(1536)`, (col) => col.notNull()) // Assuming OpenAI/compatible 1536 dim

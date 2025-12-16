@@ -44,7 +44,6 @@ import {
 import LinkMenu from "@/features/editor/components/link/link-menu.tsx";
 import ExcalidrawMenu from "./components/excalidraw/excalidraw-menu";
 import DrawioMenu from "./components/drawio/drawio-menu";
-import { AIMenu } from "@/features/ai/editor/ai-menu";
 import { useCollabToken } from "@/features/auth/queries/auth-query.tsx";
 import SearchAndReplaceDialog from "@/features/editor/components/search-and-replace/search-and-replace-dialog.tsx";
 import { useDebouncedCallback, useDocumentVisibility } from "@mantine/hooks";
@@ -414,7 +413,6 @@ export default function PageEditor({
             <ExcalidrawMenu editor={editor} />
             <DrawioMenu editor={editor} />
             <LinkMenu editor={editor} appendTo={menuContainerRef} />
-            <AIMenu editor={editor} />
           </div>
         )}
         {showCommentPopup && <CommentDialog editor={editor} pageId={pageId} />}

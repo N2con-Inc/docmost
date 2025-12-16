@@ -1,5 +1,3 @@
-version: '3'
-
 services:
   docmost:
     build:
@@ -48,6 +46,33 @@ services:
     restart: unless-stopped
     volumes:
       - redis_data:/data
+
+  db-backup:
+    image: postgres:16-alpine
+    container_name: docmost-ai-db-backup
+    depends_on:
+      - db
+    environment:
+      - POSTGRES_DB=docmost
+      - POSTGRES_USER=docmost
+      - POSTGRES_PASSWORD=yQeB3UCNKmxxVQEpLVR6
+      - DB_HOST=db
+    volumes:
+      - ./db_backups:/backups
+      - ./db_backups/backup-docmost-ai-db.sh:/backup-script.sh:ro
+    command: >
+      sh -c "
+      apk add --no-cache bash curl &&
+      curl -fsSLO https://github.com/aptible/supercronic/releases/download/v0.2.29/supercronic-linux-amd64 &&
+      mv supercronic-linux-amd64 /usr/local/bin/supercronic &&
+      chmod +x /usr/local/bin/supercronic &&
+      echo '0 * * * * /backup-script.sh' > /etc/crontab &&
+      echo 'Running initial backup...' &&
+      /backup-script.sh &&
+      echo 'Starting supercronic...' &&
+      exec supercronic /etc/crontab
+      "
+    restart: unless-stopped
 
 volumes:
   docmost:

@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { StyleGuideMCP } from './servers/style-guide.mcp';
 import { MicrosoftLearnMCP } from './servers/microsoft-learn.mcp';
 import { MicrosoftGraphMCP } from './servers/microsoft-graph.mcp';
+import { WikiPagesMCP } from './servers/wiki-pages.mcp';
 
 @Injectable()
 export class McpService implements OnModuleInit {
@@ -18,6 +19,7 @@ export class McpService implements OnModuleInit {
         private readonly styleGuideMCP: StyleGuideMCP,
         private readonly microsoftLearnMCP: MicrosoftLearnMCP,
         private readonly microsoftGraphMCP: MicrosoftGraphMCP,
+        private readonly wikiPagesMCP: WikiPagesMCP,
     ) { }
 
     async onModuleInit() {
@@ -52,6 +54,16 @@ export class McpService implements OnModuleInit {
 
         const msGraphTools = this.microsoftGraphMCP.getTools();
         for (const tool of msGraphTools) {
+            tools.push({
+                name: tool.name,
+                description: tool.description,
+                schema: tool.inputSchema,
+                func: tool.func,
+            });
+        }
+
+        const wikiTools = this.wikiPagesMCP.getTools();
+        for (const tool of wikiTools) {
             tools.push({
                 name: tool.name,
                 description: tool.description,

@@ -13,7 +13,7 @@ import { pageEditorAtom } from '@/features/editor/atoms/editor-atoms';
 
 export function AIChatSidebar() {
     const { isChatOpen, toggleChat } = useAIContext();
-    const { messages, sendMessage, isLoading } = useAI();
+    const { messages, sendMessage, isLoading, clearChat } = useAI();
     const [input, setInput] = useState('');
     const [includeRelatedDocs, setIncludeRelatedDocs] = useState(false);
     const [includeWikiStructure, setIncludeWikiStructure] = useState(false);
@@ -30,6 +30,11 @@ export function AIChatSidebar() {
             scrollViewport.current.scrollTo({ top: scrollViewport.current.scrollHeight, behavior: 'smooth' });
         }
     }, [messages, isLoading]);
+
+    // Clear chat when navigating to a different page
+    useEffect(() => {
+        clearChat();
+    }, [pageId]);
 
     if (!isChatOpen) return null;
 

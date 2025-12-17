@@ -102,7 +102,14 @@ export class AIService {
             includeAttachments
         );
 
-        return provider.chatStream(enrichedMessages);
+        // Tools (including MCP) should be available in streaming mode as well
+        const webSearchTool = this.webSearchService.getTool();
+        const refactorTool = this.refactorAgent.getToolWithContext(userId, workspaceId);
+        const consistencyTool = this.consistencyAgent.getToolWithContext(userId, workspaceId);
+        const mcpTools = await this.mcpService.getTools(userId, workspaceId);
+        const tools = [webSearchTool, refactorTool, consistencyTool, ...mcpTools];
+
+        return provider.chatStream(enrichedMessages, tools);
     }
 
     private async enrichMessagesWithContext(
@@ -130,6 +137,7 @@ export class AIService {
             // Fetch related documents if requested
             let relatedDocsContext = '';
             if (includeRelatedDocs || includeWikiStructure) {
+                    this.logger.log(`Fetching related documents - includeRelatedDocs: ${includeRelatedDocs}, includeWikiStructure: ${includeWikiStructure}, pageId: ${pageId}`);
                 try {
                     const relatedPages = [];
                     
@@ -158,6 +166,7 @@ export class AIService {
                             .where('deletedAt', 'is', null)
                             .limit(10)
                             .execute();
+                        this.logger.log(`Found ${childPages.length} child pages for pageId: ${pageId}`);
                         
                         childPages.forEach(child => {
                             relatedPages.push({
@@ -250,6 +259,9 @@ export class AIService {
 
             // Build context message
             let contextMessage = `You are viewing a document titled "${page.title}".`;
+
+            // Tool-use policy: prefer selected text, otherwise use MCP tools
+            contextMessage += `\n\nTool-use policy:\n- If the user has selected text, treat it as the primary focus.\n- When additional context is needed (full page content, children, siblings, attachments), use the MCP tools:\n  * get_page_full_content(pageId, workspaceId) - fetch complete page content\n  * list_child_pages(pageId) - list all child pages\n  * list_sibling_pages(pageId) - list sibling pages\n  * get_page_attachments(pageId) - list page attachments\n  * search_pages(query, workspaceId) - search for pages\n- Always fetch complete content using tools rather than relying on excerpts.\n- Current page ID: ${pageId}, workspace ID: ${workspaceId}`;
             
             if (pageContent && pageContent.length > 0) {
                 // Limit content size to avoid token limits (approx 10k chars = ~2.5k tokens)

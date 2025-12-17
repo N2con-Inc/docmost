@@ -14,6 +14,7 @@ import { McpService } from './mcp/mcp.service';
 import { StyleGuideMCP } from './mcp/servers/style-guide.mcp';
 import { MicrosoftLearnMCP } from './mcp/servers/microsoft-learn.mcp';
 import { MicrosoftGraphMCP } from './mcp/servers/microsoft-graph.mcp';
+import { WikiPagesMCP } from './mcp/servers/wiki-pages.mcp';
 
 @Module({
     imports: [
@@ -23,7 +24,7 @@ import { MicrosoftGraphMCP } from './mcp/servers/microsoft-graph.mcp';
         DatabaseModule,
     ],
     controllers: [AIController],
-    providers: [AIService, EmbeddingsService, WebSearchService, RefactorAgent, ConsistencyAgent, McpService, StyleGuideMCP, MicrosoftLearnMCP, MicrosoftGraphMCP],
+    providers: [AIService, EmbeddingsService, WebSearchService, RefactorAgent, ConsistencyAgent, McpService, StyleGuideMCP, MicrosoftLearnMCP, MicrosoftGraphMCP, WikiPagesMCP],
     exports: [AIService, EmbeddingsService, WebSearchService, RefactorAgent, ConsistencyAgent, McpService],
 })
 export class AIModule { }

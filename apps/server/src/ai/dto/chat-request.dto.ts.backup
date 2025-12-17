@@ -1,4 +1,4 @@
-import { IsArray, IsBoolean, IsNotEmpty, IsOptional, IsString, ValidateNested } from 'class-validator';
+import { IsArray, IsNotEmpty, IsOptional, IsString, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class ChatMessageDto {
@@ -24,16 +24,4 @@ export class ChatRequestDto {
     @IsOptional()
     @IsString()
     selectedText?: string;
-
-    @IsOptional()
-    @IsBoolean()
-    includeRelatedDocs?: boolean;
-
-    @IsOptional()
-    @IsBoolean()
-    includeWikiStructure?: boolean;
-
-    @IsOptional()
-    @IsBoolean()
-    includeAttachments?: boolean;
 }

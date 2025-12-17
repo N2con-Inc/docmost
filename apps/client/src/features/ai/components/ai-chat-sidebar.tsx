@@ -3,7 +3,7 @@ import { useAIContext } from '../context/ai-provider';
 import { useAI } from '../hooks/use-ai';
 import { useAILiveEdit } from '../hooks/use-ai-live-edit';
 import { getInsertableContent, extractInsertableContent } from '../utils/content-extractor';
-import { ActionIcon, Badge, Box, Button, Group, ScrollArea, Stack, Text, Textarea, Title, Loader, Tooltip } from '@mantine/core';
+import { ActionIcon, Badge, Box, Button, Group, ScrollArea, Stack, Switch, Text, Textarea, Title, Loader, Tooltip } from '@mantine/core';
 import { IconX, IconSend, IconRobot, IconCopy, IconArrowBigDownLine, IconReplace, IconSparkles } from '@tabler/icons-react';
 import { useParams } from 'react-router-dom';
 import { extractPageSlugId } from '@/lib';
@@ -15,6 +15,9 @@ export function AIChatSidebar() {
     const { isChatOpen, toggleChat } = useAIContext();
     const { messages, sendMessage, isLoading } = useAI();
     const [input, setInput] = useState('');
+    const [includeRelatedDocs, setIncludeRelatedDocs] = useState(false);
+    const [includeWikiStructure, setIncludeWikiStructure] = useState(false);
+    const [includeAttachments, setIncludeAttachments] = useState(false);
     const scrollViewport = useRef<HTMLDivElement>(null);
     const { pageSlug } = useParams();
     const pageId = extractPageSlugId(pageSlug);
@@ -44,7 +47,10 @@ export function AIChatSidebar() {
 
         sendMessage(input, { 
             pageId,
-            selectedText
+            selectedText,
+            includeRelatedDocs,
+            includeWikiStructure,
+            includeAttachments
         });
         setInput('');
     };

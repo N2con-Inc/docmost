@@ -19,10 +19,7 @@ export class AIController {
             user.workspaceId, 
             body.messages, 
             body.pageId,
-            body.selectedText,
-            body.includeRelatedDocs,
-            body.includeWikiStructure,
-            body.includeAttachments
+            body.selectedText
         );
     }
 
@@ -33,10 +30,7 @@ export class AIController {
             user.workspaceId, 
             body.messages,
             body.pageId,
-            body.selectedText,
-            body.includeRelatedDocs,
-            body.includeWikiStructure,
-            body.includeAttachments
+            body.selectedText
         );
 
         res.setHeader('Content-Type', 'text/event-stream');

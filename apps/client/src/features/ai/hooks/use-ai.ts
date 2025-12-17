@@ -10,6 +10,9 @@ export interface ChatMessage {
 export interface SendMessageOptions {
     pageId?: string;
     selectedText?: string;
+    includeRelatedDocs?: boolean;
+    includeWikiStructure?: boolean;
+    includeAttachments?: boolean;
 }
 
 export function useAI() {
@@ -17,15 +20,21 @@ export function useAI() {
     const [isLoading, setIsLoading] = useState(false);
 
     const chatMutation = useMutation({
-        mutationFn: async ({ msgs, pageId, selectedText }: { 
+        mutationFn: async ({ msgs, pageId, selectedText, includeRelatedDocs, includeWikiStructure, includeAttachments }: { 
             msgs: ChatMessage[], 
             pageId?: string,
-            selectedText?: string 
+            selectedText?: string,
+            includeRelatedDocs?: boolean,
+            includeWikiStructure?: boolean,
+            includeAttachments?: boolean
         }) => {
             const response = await api.post('/ai/chat', { 
                 messages: msgs,
                 pageId,
-                selectedText
+                selectedText,
+                includeRelatedDocs,
+                includeWikiStructure,
+                includeAttachments
             });
             return response.data;
         },
@@ -45,7 +54,10 @@ export function useAI() {
         chatMutation.mutate({ 
             msgs: newMessages,
             pageId: options?.pageId,
-            selectedText: options?.selectedText
+            selectedText: options?.selectedText,
+            includeRelatedDocs: options?.includeRelatedDocs,
+            includeWikiStructure: options?.includeWikiStructure,
+            includeAttachments: options?.includeAttachments
         });
     };
 

@@ -5,6 +5,7 @@ import { EmbeddingsService } from './embeddings.service';
 import { ConfigModule } from '@nestjs/config';
 import { WorkspaceModule } from '../core/workspace/workspace.module';
 import { PageModule } from '../core/page/page.module';
+import { DatabaseModule } from '../database/database.module';
 
 import { WebSearchService } from './tools/web-search.service';
 import { RefactorAgent } from './agents/refactor.agent';
@@ -19,6 +20,7 @@ import { MicrosoftGraphMCP } from './mcp/servers/microsoft-graph.mcp';
         ConfigModule,
         WorkspaceModule,
         PageModule,
+        DatabaseModule,
     ],
     controllers: [AIController],
     providers: [AIService, EmbeddingsService, WebSearchService, RefactorAgent, ConsistencyAgent, McpService, StyleGuideMCP, MicrosoftLearnMCP, MicrosoftGraphMCP],

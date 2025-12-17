@@ -14,10 +14,6 @@ import { PageService } from '../core/page/services/page.service';
 import { JSONContent } from '@tiptap/core';
 import { tiptapExtensions } from '../collaboration/collaboration.util';
 import { generateHTML } from '../common/helpers/prosemirror/html';
-import { PageRepo } from '../database/repos/page/page.repo';
-import { AttachmentRepo } from '../database/repos/attachment/attachment.repo';
-import { InjectKysely } from 'nestjs-kysely';
-import { KyselyDB } from '@docmost/db/types/kysely.types';
 
 @Injectable()
 export class AIService {
@@ -36,9 +32,6 @@ export class AIService {
         private readonly consistencyAgent: ConsistencyAgent,
         @Inject(forwardRef(() => PageService))
         private readonly pageService: PageService,
-        private readonly pageRepo: PageRepo,
-        private readonly attachmentRepo: AttachmentRepo,
-        @InjectKysely() private readonly db: KyselyDB,
     ) {
         // Initialize providers
         this.registerProvider(new OllamaProvider());
@@ -55,10 +48,7 @@ export class AIService {
         workspaceId: string, 
         messages: ChatMessage[],
         pageId?: string,
-        selectedText?: string,
-        includeRelatedDocs?: boolean,
-        includeWikiStructure?: boolean,
-        includeAttachments?: boolean,
+        selectedText?: string
     ): Promise<string> {
         const provider = await this.getConfiguredProvider(userId, workspaceId);
         
@@ -84,10 +74,7 @@ export class AIService {
         workspaceId: string, 
         messages: ChatMessage[],
         pageId?: string,
-        selectedText?: string,
-        includeRelatedDocs?: boolean,
-        includeWikiStructure?: boolean,
-        includeAttachments?: boolean
+        selectedText?: string
     ) {
         const provider = await this.getConfiguredProvider(userId, workspaceId);
         
@@ -96,10 +83,7 @@ export class AIService {
             messages, 
             pageId, 
             selectedText,
-            workspaceId,
-            includeRelatedDocs,
-            includeWikiStructure,
-            includeAttachments
+            workspaceId
         );
 
         return provider.chatStream(enrichedMessages);
@@ -109,10 +93,7 @@ export class AIService {
         messages: ChatMessage[],
         pageId?: string,
         selectedText?: string,
-        workspaceId?: string,
-        includeRelatedDocs?: boolean,
-        includeWikiStructure?: boolean,
-        includeAttachments?: boolean
+        workspaceId?: string
     ): Promise<ChatMessage[]> {
         if (!pageId) {
             return messages;
@@ -126,113 +107,6 @@ export class AIService {
                 this.logger.warn(`Page ${pageId} not found for context enrichment`);
                 return messages;
             }
-
-            // Fetch related documents if requested
-            let relatedDocsContext = '';
-            if (includeRelatedDocs || includeWikiStructure) {
-                try {
-                    const relatedPages = [];
-                    
-                    // Fetch parent page
-                    if (page.parentPageId && includeWikiStructure) {
-                        const parentPage = await this.pageRepo.findById(page.parentPageId, {
-                            includeContent: false,
-                            includeTextContent: true,
-                        });
-                        if (parentPage) {
-                            relatedPages.push({
-                                type: 'parent',
-                                title: parentPage.title,
-                                id: parentPage.id,
-                                textContent: parentPage.textContent?.substring(0, 1000) || '',
-                            });
-                        }
-                    }
-                    
-                    // Fetch child pages
-                    if (includeWikiStructure) {
-                        const childPages = await this.db
-                            .selectFrom('pages')
-                            .select(['id', 'title', 'textContent'])
-                            .where('parentPageId', '=', pageId)
-                            .where('deletedAt', 'is', null)
-                            .limit(10)
-                            .execute();
-                        
-                        childPages.forEach(child => {
-                            relatedPages.push({
-                                type: 'child',
-                                title: child.title,
-                                id: child.id,
-                                textContent: child.textContent?.substring(0, 1000) || '',
-                            });
-                        });
-                    }
-                    
-                    // Fetch sibling pages
-                    if (page.parentPageId && includeWikiStructure) {
-                        const siblingPages = await this.db
-                            .selectFrom('pages')
-                            .select(['id', 'title', 'textContent'])
-                            .where('parentPageId', '=', page.parentPageId)
-                            .where('id', '!=', pageId)
-                            .where('deletedAt', 'is', null)
-                            .limit(5)
-                            .execute();
-                        
-                        siblingPages.forEach(sibling => {
-                            relatedPages.push({
-                                type: 'sibling',
-                                title: sibling.title,
-                                id: sibling.id,
-                                textContent: sibling.textContent?.substring(0, 500) || '',
-                            });
-                        });
-                    }
-                    
-                    // Build related documents context
-                    if (relatedPages.length > 0) {
-                        relatedDocsContext = '\n\nRelated documents in wiki structure:\n';
-                        relatedPages.forEach(doc => {
-                            relatedDocsContext += `- ${doc.type.toUpperCase()}: "${doc.title}"`;
-                            if (doc.textContent) {
-                                relatedDocsContext += ` - ${doc.textContent.substring(0, 200)}...`;
-                            }
-                            relatedDocsContext += '\n';
-                        });
-                    }
-                } catch (err) {
-                    this.logger.error(`Failed to fetch related documents: ${(err as Error).message}`);
-                }
-            }
-            
-            // Fetch attachments if requested
-            let attachmentsContext = '';
-            if (includeAttachments) {
-                try {
-                    const attachments = await this.db
-                        .selectFrom('attachments')
-                        .select(['id', 'fileName', 'fileExt', 'mimeType', 'textContent'])
-                        .where('pageId', '=', pageId)
-                        .where('deletedAt', 'is', null)
-                        .execute();
-                    
-                    if (attachments.length > 0) {
-                        attachmentsContext = `\n\nAttachments on this page (${attachments.length}):`;
-                        attachments.forEach(att => {
-                            attachmentsContext += `\n- ${att.fileName}${att.fileExt ? '.' + att.fileExt : ''} (${att.mimeType})`;
-                            if (att.textContent && att.textContent.length > 0) {
-                                // Include extracted text from attachments if available
-                                const textSnippet = att.textContent.substring(0, 500);
-                                attachmentsContext += `\n  Content excerpt: ${textSnippet}...`;
-                            }
-                        });
-                    }
-                } catch (err) {
-                    this.logger.error(`Failed to fetch attachments: ${(err as Error).message}`);
-                }
-            }
-
 
             // Convert page content to HTML then to plain text
             let pageContent = '';
@@ -264,7 +138,6 @@ export class AIService {
                 contextMessage += `\n\nThe user has selected the following text:\n"${selectedText}"`;
             }
 
-            contextMessage += relatedDocsContext + attachmentsContext;
             contextMessage += '\n\nIMPORTANT Instructions for content insertion:\n- When providing content to insert, ONLY provide the content itself\n- Do NOT add explanations, commentary, or descriptions before or after\n- Always use proper Markdown formatting (# for headers, ** for bold, * for italic, - for lists, ``` for code)\n- Preserve paragraph breaks with blank lines\n- Keep formatting consistent with the document style\n\nFor questions or analysis, provide normal conversational responses.\nFor content insertion requests (\"write\", \"create\", \"improve\", \"rewrite\"), provide ONLY the insertable content without any explanation.';
 
             // Inject context as first system message or prepend to existing system message

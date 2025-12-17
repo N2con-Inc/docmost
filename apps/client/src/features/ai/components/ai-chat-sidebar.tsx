@@ -2,8 +2,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useAIContext } from '../context/ai-provider';
 import { useAI } from '../hooks/use-ai';
 import { useAILiveEdit } from '../hooks/use-ai-live-edit';
+import { getInsertableContent, extractInsertableContent } from '../utils/content-extractor';
 import { ActionIcon, Badge, Box, Button, Group, ScrollArea, Stack, Text, Textarea, Title, Loader, Tooltip } from '@mantine/core';
-import { IconX, IconSend, IconRobot, IconCopy, IconArrowBigDownLine, IconReplace } from '@tabler/icons-react';
+import { IconX, IconSend, IconRobot, IconCopy, IconArrowBigDownLine, IconReplace, IconSparkles } from '@tabler/icons-react';
 import { useParams } from 'react-router-dom';
 import { extractPageSlugId } from '@/lib';
 import { usePageQuery } from '@/features/page/queries/page-query';
@@ -55,6 +56,21 @@ export function AIChatSidebar() {
         }
     };
 
+    const handleInsertAtCursor = (content: string) => {
+        const extracted = getInsertableContent(content);
+        insertAtCursor(extracted);
+    };
+
+    const handleReplaceSelection = (content: string) => {
+        const extracted = getInsertableContent(content);
+        replaceSelection(extracted);
+    };
+
+    const handleCopy = (content: string) => {
+        const extracted = getInsertableContent(content);
+        copyToClipboard(extracted);
+    };
+
     return (
         <Box
             style={{
@@ -96,59 +112,76 @@ export function AIChatSidebar() {
                             Ask me anything about your documents!
                         </Text>
                     )}
-                    {messages.map((msg, index) => (
-                        <Box key={index}>
-                            <Box
-                                style={{
-                                    alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
-                                    maxWidth: '100%',
-                                    backgroundColor: msg.role === 'user' ? 'var(--mantine-color-blue-light)' : 'var(--mantine-color-gray-light)',
-                                    padding: '8px 12px',
-                                    borderRadius: 8,
-                                }}
-                            >
-                                <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</Text>
+                    {messages.map((msg, index) => {
+                        const extraction = msg.role === 'assistant' ? extractInsertableContent(msg.content) : null;
+                        
+                        return (
+                            <Box key={index}>
+                                <Box
+                                    style={{
+                                        alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
+                                        maxWidth: '100%',
+                                        backgroundColor: msg.role === 'user' ? 'var(--mantine-color-blue-light)' : 'var(--mantine-color-gray-light)',
+                                        padding: '8px 12px',
+                                        borderRadius: 8,
+                                    }}
+                                >
+                                    <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</Text>
+                                </Box>
+                                
+                                {/* Action buttons for assistant messages */}
+                                {msg.role === 'assistant' && (
+                                    <Group gap="xs" mt="xs" ml="xs" align="center">
+                                        <Tooltip label="Insert at cursor">
+                                            <ActionIcon 
+                                                size="sm" 
+                                                variant="light" 
+                                                color="blue"
+                                                onClick={() => handleInsertAtCursor(msg.content)}
+                                            >
+                                                <IconArrowBigDownLine size={14} />
+                                            </ActionIcon>
+                                        </Tooltip>
+                                        
+                                        <Tooltip label="Replace selection">
+                                            <ActionIcon 
+                                                size="sm" 
+                                                variant="light" 
+                                                color="grape"
+                                                onClick={() => handleReplaceSelection(msg.content)}
+                                            >
+                                                <IconReplace size={14} />
+                                            </ActionIcon>
+                                        </Tooltip>
+                                        
+                                        <Tooltip label="Copy to clipboard">
+                                            <ActionIcon 
+                                                size="sm" 
+                                                variant="light" 
+                                                color="gray"
+                                                onClick={() => handleCopy(msg.content)}
+                                            >
+                                                <IconCopy size={14} />
+                                            </ActionIcon>
+                                        </Tooltip>
+
+                                        {extraction?.hasExtraction && (
+                                            <Tooltip label="Smart extraction active - inserting content only">
+                                                <Badge 
+                                                    size="xs" 
+                                                    variant="light" 
+                                                    color="green"
+                                                    leftSection={<IconSparkles size={10} />}
+                                                >
+                                                    Smart
+                                                </Badge>
+                                            </Tooltip>
+                                        )}
+                                    </Group>
+                                )}
                             </Box>
-                            
-                            {/* Action buttons for assistant messages */}
-                            {msg.role === 'assistant' && (
-                                <Group gap="xs" mt="xs" ml="xs">
-                                    <Tooltip label="Insert at cursor">
-                                        <ActionIcon 
-                                            size="sm" 
-                                            variant="light" 
-                                            color="blue"
-                                            onClick={() => insertAtCursor(msg.content)}
-                                        >
-                                            <IconArrowBigDownLine size={14} />
-                                        </ActionIcon>
-                                    </Tooltip>
-                                    
-                                    <Tooltip label="Replace selection">
-                                        <ActionIcon 
-                                            size="sm" 
-                                            variant="light" 
-                                            color="grape"
-                                            onClick={() => replaceSelection(msg.content)}
-                                        >
-                                            <IconReplace size={14} />
-                                        </ActionIcon>
-                                    </Tooltip>
-                                    
-                                    <Tooltip label="Copy to clipboard">
-                                        <ActionIcon 
-                                            size="sm" 
-                                            variant="light" 
-                                            color="gray"
-                                            onClick={() => copyToClipboard(msg.content)}
-                                        >
-                                            <IconCopy size={14} />
-                                        </ActionIcon>
-                                    </Tooltip>
-                                </Group>
-                            )}
-                        </Box>
-                    ))}
+                        );
+                    })}
                     {isLoading && (
                         <Box
                             style={{

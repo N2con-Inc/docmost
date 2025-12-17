@@ -138,7 +138,7 @@ export class AIService {
                 contextMessage += `\n\nThe user has selected the following text:\n"${selectedText}"`;
             }
 
-            contextMessage += '\n\nIMPORTANT: When providing content that should be inserted into the document:\n- Always use proper Markdown formatting\n- Use # for headers, ** for bold, * for italic, - for lists, etc.\n- Preserve paragraph breaks with blank lines\n- Use code blocks with ``` for code\n- Keep formatting consistent with the document style\n\nPlease answer the user\'s questions based on this document context.';
+            contextMessage += '\n\nIMPORTANT Instructions for content insertion:\n- When providing content to insert, ONLY provide the content itself\n- Do NOT add explanations, commentary, or descriptions before or after\n- Always use proper Markdown formatting (# for headers, ** for bold, * for italic, - for lists, ``` for code)\n- Preserve paragraph breaks with blank lines\n- Keep formatting consistent with the document style\n\nFor questions or analysis, provide normal conversational responses.\nFor content insertion requests (\"write\", \"create\", \"improve\", \"rewrite\"), provide ONLY the insertable content without any explanation.';
 
             // Inject context as first system message or prepend to existing system message
             const systemMessageIndex = messages.findIndex(m => m.role === 'system');

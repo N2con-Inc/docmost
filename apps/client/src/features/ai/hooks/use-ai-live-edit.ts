@@ -1,14 +1,41 @@
 import { Editor } from '@tiptap/react';
 import { useCallback } from 'react';
 import { notifications } from '@mantine/notifications';
+import { markdownToHtml } from '@docmost/editor-ext';
+import { DOMParser } from '@tiptap/pm/model';
 
 export interface AILiveEditOptions {
     editor: Editor | null;
 }
 
+/**
+ * Converts Markdown content to TipTap-compatible format
+ */
+async function convertMarkdownForEditor(markdown: string, editor: Editor): Promise<any> {
+    try {
+        // Convert Markdown to HTML (may be async)
+        const html = await Promise.resolve(markdownToHtml(markdown));
+        
+        // Parse HTML into ProseMirror nodes
+        const parser = DOMParser.fromSchema(editor.schema);
+        const element = document.createElement('div');
+        element.innerHTML = html;
+        
+        const doc = parser.parse(element, {
+            preserveWhitespace: true,
+        });
+        
+        return doc.content;
+    } catch (error) {
+        // Fallback to plain text if conversion fails
+        console.warn('Markdown conversion failed, falling back to plain text:', error);
+        return markdown;
+    }
+}
+
 export function useAILiveEdit({ editor }: AILiveEditOptions) {
     
-    const insertAtCursor = useCallback((content: string) => {
+    const insertAtCursor = useCallback(async (content: string) => {
         if (!editor) {
             notifications.show({
                 title: 'Error',
@@ -19,8 +46,11 @@ export function useAILiveEdit({ editor }: AILiveEditOptions) {
         }
 
         try {
+            // Convert Markdown to editor format
+            const editorContent = await convertMarkdownForEditor(content, editor);
+            
             // Insert content at current cursor position
-            editor.chain().focus().insertContent(content).run();
+            editor.chain().focus().insertContent(editorContent).run();
             
             notifications.show({
                 title: 'Success',
@@ -39,7 +69,7 @@ export function useAILiveEdit({ editor }: AILiveEditOptions) {
         }
     }, [editor]);
 
-    const replaceSelection = useCallback((content: string) => {
+    const replaceSelection = useCallback(async (content: string) => {
         if (!editor) {
             notifications.show({
                 title: 'Error',
@@ -57,11 +87,14 @@ export function useAILiveEdit({ editor }: AILiveEditOptions) {
                 return insertAtCursor(content);
             }
 
+            // Convert Markdown to editor format
+            const editorContent = await convertMarkdownForEditor(content, editor);
+
             // Replace selected content
             editor.chain()
                 .focus()
                 .deleteRange({ from, to })
-                .insertContent(content)
+                .insertContent(editorContent)
                 .run();
             
             notifications.show({
@@ -81,7 +114,7 @@ export function useAILiveEdit({ editor }: AILiveEditOptions) {
         }
     }, [editor, insertAtCursor]);
 
-    const appendToDocument = useCallback((content: string) => {
+    const appendToDocument = useCallback(async (content: string) => {
         if (!editor) {
             notifications.show({
                 title: 'Error',
@@ -92,12 +125,16 @@ export function useAILiveEdit({ editor }: AILiveEditOptions) {
         }
 
         try {
+            // Convert Markdown to editor format
+            const editorContent = await convertMarkdownForEditor(content, editor);
+            
             // Move to end of document and insert
             const endPos = editor.state.doc.content.size;
             editor.chain()
                 .focus()
                 .setTextSelection(endPos)
-                .insertContent('\n' + content)
+                .insertContent('\n')
+                .insertContent(editorContent)
                 .run();
             
             notifications.show({

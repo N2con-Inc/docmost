@@ -4,15 +4,10 @@ import { EnvironmentService } from '../environment/environment.service';
 import { createRetryStrategy, parseRedisUrl } from '../../common/helpers';
 import { QueueName } from './constants';
 import { BacklinksProcessor } from './processors/backlinks.processor';
-import { RagProcessor } from './processors/rag.processor';
-import { AIModule } from '../../ai/ai.module';
-import { PageModule } from '../../core/page/page.module';
 
 @Global()
 @Module({
   imports: [
-    AIModule,
-    PageModule,
     BullModule.forRootAsync({
       useFactory: (environmentService: EnvironmentService) => {
         const redisConfig = parseRedisUrl(environmentService.getRedisUrl());
@@ -71,15 +66,15 @@ import { PageModule } from '../../core/page/page.module';
       },
     }),
     BullModule.registerQueue({
-      name: QueueName.RAG_QUEUE,
+      name: QueueName.AI_QUEUE,
       defaultJobOptions: {
         removeOnComplete: true,
         removeOnFail: true,
-        attempts: 3,
+        attempts: 1,
       },
     }),
   ],
   exports: [BullModule],
-  providers: [BacklinksProcessor, RagProcessor],
+  providers: [BacklinksProcessor],
 })
-export class QueueModule { }
+export class QueueModule {}

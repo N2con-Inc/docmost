@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAIContext } from '../context/ai-provider';
 import { useAI } from '../hooks/use-ai';
-import { ActionIcon, Badge, Box, Button, Group, ScrollArea, Stack, Text, Textarea, Title, Loader } from '@mantine/core';
-import { IconX, IconSend, IconRobot } from '@tabler/icons-react';
+import { useAILiveEdit } from '../hooks/use-ai-live-edit';
+import { ActionIcon, Badge, Box, Button, Group, ScrollArea, Stack, Text, Textarea, Title, Loader, Tooltip } from '@mantine/core';
+import { IconX, IconSend, IconRobot, IconCopy, IconArrowBigDownLine, IconReplace } from '@tabler/icons-react';
 import { useParams } from 'react-router-dom';
 import { extractPageSlugId } from '@/lib';
 import { usePageQuery } from '@/features/page/queries/page-query';
@@ -18,6 +19,7 @@ export function AIChatSidebar() {
     const pageId = extractPageSlugId(pageSlug);
     const { data: page } = usePageQuery({ pageId });
     const [pageEditor] = useAtom(pageEditorAtom);
+    const { insertAtCursor, replaceSelection, copyToClipboard } = useAILiveEdit({ editor: pageEditor });
 
     useEffect(() => {
         if (scrollViewport.current) {
@@ -59,7 +61,7 @@ export function AIChatSidebar() {
                 position: 'fixed',
                 top: 0,
                 right: 0,
-                width: 350,
+                width: 380,
                 height: '100vh',
                 backgroundColor: 'var(--mantine-color-body)',
                 borderLeft: '1px solid var(--mantine-color-default-border)',
@@ -95,17 +97,56 @@ export function AIChatSidebar() {
                         </Text>
                     )}
                     {messages.map((msg, index) => (
-                        <Box
-                            key={index}
-                            style={{
-                                alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
-                                maxWidth: '85%',
-                                backgroundColor: msg.role === 'user' ? 'var(--mantine-color-blue-light)' : 'var(--mantine-color-gray-light)',
-                                padding: '8px 12px',
-                                borderRadius: 8,
-                            }}
-                        >
-                            <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</Text>
+                        <Box key={index}>
+                            <Box
+                                style={{
+                                    alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
+                                    maxWidth: '100%',
+                                    backgroundColor: msg.role === 'user' ? 'var(--mantine-color-blue-light)' : 'var(--mantine-color-gray-light)',
+                                    padding: '8px 12px',
+                                    borderRadius: 8,
+                                }}
+                            >
+                                <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</Text>
+                            </Box>
+                            
+                            {/* Action buttons for assistant messages */}
+                            {msg.role === 'assistant' && (
+                                <Group gap="xs" mt="xs" ml="xs">
+                                    <Tooltip label="Insert at cursor">
+                                        <ActionIcon 
+                                            size="sm" 
+                                            variant="light" 
+                                            color="blue"
+                                            onClick={() => insertAtCursor(msg.content)}
+                                        >
+                                            <IconArrowBigDownLine size={14} />
+                                        </ActionIcon>
+                                    </Tooltip>
+                                    
+                                    <Tooltip label="Replace selection">
+                                        <ActionIcon 
+                                            size="sm" 
+                                            variant="light" 
+                                            color="grape"
+                                            onClick={() => replaceSelection(msg.content)}
+                                        >
+                                            <IconReplace size={14} />
+                                        </ActionIcon>
+                                    </Tooltip>
+                                    
+                                    <Tooltip label="Copy to clipboard">
+                                        <ActionIcon 
+                                            size="sm" 
+                                            variant="light" 
+                                            color="gray"
+                                            onClick={() => copyToClipboard(msg.content)}
+                                        >
+                                            <IconCopy size={14} />
+                                        </ActionIcon>
+                                    </Tooltip>
+                                </Group>
+                            )}
                         </Box>
                     ))}
                     {isLoading && (

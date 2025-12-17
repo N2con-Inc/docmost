@@ -6,7 +6,7 @@ import { EmbeddingsService } from '../../../ai/embeddings.service';
 import { AIService } from '../../../ai/ai.service';
 import { PageRepo } from '@docmost/db/repos/page/page.repo';
 
-@Processor(QueueName.RAG_QUEUE)
+@Processor(QueueName.AI_QUEUE)
 export class RagProcessor extends WorkerHost {
     private readonly logger = new Logger(RagProcessor.name);
 
@@ -20,7 +20,7 @@ export class RagProcessor extends WorkerHost {
 
     async process(job: Job<any, any, string>): Promise<any> {
         switch (job.name) {
-            case QueueJob.RAG_INDEX_PAGE:
+            case QueueJob.GENERATE_PAGE_EMBEDDINGS:
                 return this.indexPage(job.data.pageId, job.data.workspaceId);
             default:
                 this.logger.warn(`Unknown job name: ${job.name}`);

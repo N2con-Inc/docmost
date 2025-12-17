@@ -66,7 +66,7 @@ describe('RagProcessor', () => {
     describe('process', () => {
         it('should call indexPage for RAG_INDEX_PAGE job', async () => {
             const job = {
-                name: QueueJob.RAG_INDEX_PAGE,
+                name: QueueJob.GENERATE_PAGE_EMBEDDINGS,
                 data: { pageId: 'page-1', workspaceId: 'ws-1' },
             } as Job;
 

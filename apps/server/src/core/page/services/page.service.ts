@@ -104,7 +104,7 @@ export class PageService {
     });
 
     try {
-      await this.aiQueue.add(QueueJob.RAG_INDEX_PAGE, {
+      await this.aiQueue.add(QueueJob.GENERATE_PAGE_EMBEDDINGS, {
         pageId: createdPage.id,
         workspaceId: workspaceId,
       });
@@ -177,7 +177,7 @@ export class PageService {
     );
 
     try {
-      await this.aiQueue.add(QueueJob.RAG_INDEX_PAGE, {
+      await this.aiQueue.add(QueueJob.GENERATE_PAGE_EMBEDDINGS, {
         pageId: page.id,
         workspaceId: page.workspaceId,
       });

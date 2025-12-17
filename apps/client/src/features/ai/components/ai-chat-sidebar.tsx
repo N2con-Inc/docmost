@@ -1,14 +1,23 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAIContext } from '../context/ai-provider';
 import { useAI } from '../hooks/use-ai';
-import { ActionIcon, Box, Button, Group, ScrollArea, Stack, Text, Textarea, Title, Loader } from '@mantine/core';
+import { ActionIcon, Badge, Box, Button, Group, ScrollArea, Stack, Text, Textarea, Title, Loader } from '@mantine/core';
 import { IconX, IconSend, IconRobot } from '@tabler/icons-react';
+import { useParams } from 'react-router-dom';
+import { extractPageSlugId } from '@/lib';
+import { usePageQuery } from '@/features/page/queries/page-query';
+import { useAtom } from 'jotai';
+import { pageEditorAtom } from '@/features/editor/atoms/editor-atoms';
 
 export function AIChatSidebar() {
     const { isChatOpen, toggleChat } = useAIContext();
     const { messages, sendMessage, isLoading } = useAI();
     const [input, setInput] = useState('');
     const scrollViewport = useRef<HTMLDivElement>(null);
+    const { pageSlug } = useParams();
+    const pageId = extractPageSlugId(pageSlug);
+    const { data: page } = usePageQuery({ pageId });
+    const [pageEditor] = useAtom(pageEditorAtom);
 
     useEffect(() => {
         if (scrollViewport.current) {
@@ -20,7 +29,20 @@ export function AIChatSidebar() {
 
     const handleSubmit = () => {
         if (!input.trim()) return;
-        sendMessage(input);
+        
+        // Get selected text from editor if available
+        let selectedText: string | undefined;
+        if (pageEditor?.state?.selection) {
+            const { from, to } = pageEditor.state.selection;
+            if (from !== to) {
+                selectedText = pageEditor.state.doc.textBetween(from, to);
+            }
+        }
+
+        sendMessage(input, { 
+            pageId,
+            selectedText
+        });
         setInput('');
     };
 
@@ -57,6 +79,14 @@ export function AIChatSidebar() {
                 </ActionIcon>
             </Group>
 
+            {page && (
+                <Box p="xs" px="md" style={{ backgroundColor: 'var(--mantine-color-gray-light)', borderBottom: '1px solid var(--mantine-color-default-border)' }}>
+                    <Text size="xs" c="dimmed">
+                        Discussing: <Text span fw={500} c="dark">{page.title}</Text>
+                    </Text>
+                </Box>
+            )}
+
             <ScrollArea style={{ flex: 1 }} viewportRef={scrollViewport} p="md">
                 <Stack gap="md">
                     {messages.length === 0 && (
@@ -75,7 +105,7 @@ export function AIChatSidebar() {
                                 borderRadius: 8,
                             }}
                         >
-                            <Text size="sm">{msg.content}</Text>
+                            <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</Text>
                         </Box>
                     ))}
                     {isLoading && (

@@ -7,13 +7,26 @@ export interface ChatMessage {
     content: string;
 }
 
+export interface SendMessageOptions {
+    pageId?: string;
+    selectedText?: string;
+}
+
 export function useAI() {
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [isLoading, setIsLoading] = useState(false);
 
     const chatMutation = useMutation({
-        mutationFn: async (msgs: ChatMessage[]) => {
-            const response = await api.post('/ai/chat', { messages: msgs });
+        mutationFn: async ({ msgs, pageId, selectedText }: { 
+            msgs: ChatMessage[], 
+            pageId?: string,
+            selectedText?: string 
+        }) => {
+            const response = await api.post('/ai/chat', { 
+                messages: msgs,
+                pageId,
+                selectedText
+            });
             return response.data;
         },
         onSuccess: (data) => {
@@ -25,11 +38,15 @@ export function useAI() {
         },
     });
 
-    const sendMessage = async (content: string) => {
+    const sendMessage = async (content: string, options?: SendMessageOptions) => {
         const newMessages: ChatMessage[] = [...messages, { role: 'user', content }];
         setMessages(newMessages);
         setIsLoading(true);
-        chatMutation.mutate(newMessages);
+        chatMutation.mutate({ 
+            msgs: newMessages,
+            pageId: options?.pageId,
+            selectedText: options?.selectedText
+        });
     };
 
     const clearChat = () => {

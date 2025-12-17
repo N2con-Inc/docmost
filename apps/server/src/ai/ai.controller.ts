@@ -14,25 +14,24 @@ export class AIController {
 
     @Post('chat')
     async chat(@AuthUser() user: User, @Body() body: ChatRequestDto) {
-        // Assuming workspaceId is available in user context or passed in body. 
-        // For now, let's assume the user's active workspace or passed via header/body.
-        // Ideally, we should get workspaceId from the request context or body.
-        // Let's assume for now we use the user's last active workspace or similar.
-        // But wait, the service needs workspaceId to get settings.
-        // I'll add workspaceId to the DTO or extract it from headers if the app uses a specific header.
-        // Checking existing controllers might help.
-
-        // For now, I'll assume the client sends X-Workspace-ID header or similar, 
-        // but since I don't see that pattern yet, I'll just use a placeholder or 
-        // maybe the user entity has a workspaceId if they are scoped.
-        // Looking at `UserEntity`, it has `workspaceId`.
-
-        return this.aiService.chat(user.id, user.workspaceId, body.messages);
+        return this.aiService.chat(
+            user.id, 
+            user.workspaceId, 
+            body.messages, 
+            body.pageId,
+            body.selectedText
+        );
     }
 
     @Post('chat/stream')
     async chatStream(@AuthUser() user: User, @Body() body: ChatRequestDto, @Res() res: Response) {
-        const stream = await this.aiService.chatStream(user.id, user.workspaceId, body.messages);
+        const stream = await this.aiService.chatStream(
+            user.id, 
+            user.workspaceId, 
+            body.messages,
+            body.pageId,
+            body.selectedText
+        );
 
         res.setHeader('Content-Type', 'text/event-stream');
         res.setHeader('Cache-Control', 'no-cache');

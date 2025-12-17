@@ -10,6 +10,10 @@ import { WebSearchService } from './tools/web-search.service';
 import { McpService } from './mcp/mcp.service';
 import { RefactorAgent } from './agents/refactor.agent';
 import { ConsistencyAgent } from './agents/consistency.agent';
+import { PageService } from '../core/page/services/page.service';
+import { JSONContent } from '@tiptap/core';
+import { tiptapExtensions } from '../collaboration/collaboration.util';
+import { generateHTML } from '../common/helpers/prosemirror/html';
 
 @Injectable()
 export class AIService {
@@ -26,6 +30,8 @@ export class AIService {
         private readonly refactorAgent: RefactorAgent,
         @Inject(forwardRef(() => ConsistencyAgent))
         private readonly consistencyAgent: ConsistencyAgent,
+        @Inject(forwardRef(() => PageService))
+        private readonly pageService: PageService,
     ) {
         // Initialize providers
         this.registerProvider(new OllamaProvider());
@@ -37,20 +43,122 @@ export class AIService {
         this.providers.set(provider.id, provider);
     }
 
-    async chat(userId: string, workspaceId: string, messages: ChatMessage[]): Promise<string> {
+    async chat(
+        userId: string, 
+        workspaceId: string, 
+        messages: ChatMessage[],
+        pageId?: string,
+        selectedText?: string
+    ): Promise<string> {
         const provider = await this.getConfiguredProvider(userId, workspaceId);
+        
+        // Inject page context if pageId is provided
+        const enrichedMessages = await this.enrichMessagesWithContext(
+            messages, 
+            pageId, 
+            selectedText,
+            workspaceId
+        );
+
         const webSearchTool = this.webSearchService.getTool();
         const refactorTool = this.refactorAgent.getToolWithContext(userId, workspaceId);
         const consistencyTool = this.consistencyAgent.getToolWithContext(userId, workspaceId);
         const mcpTools = await this.mcpService.getTools(userId, workspaceId);
 
         const tools = [webSearchTool, refactorTool, consistencyTool, ...mcpTools];
-        return provider.chat(messages, tools);
+        return provider.chat(enrichedMessages, tools);
     }
 
-    async chatStream(userId: string, workspaceId: string, messages: ChatMessage[]) {
+    async chatStream(
+        userId: string, 
+        workspaceId: string, 
+        messages: ChatMessage[],
+        pageId?: string,
+        selectedText?: string
+    ) {
         const provider = await this.getConfiguredProvider(userId, workspaceId);
-        return provider.chatStream(messages);
+        
+        // Inject page context if pageId is provided
+        const enrichedMessages = await this.enrichMessagesWithContext(
+            messages, 
+            pageId, 
+            selectedText,
+            workspaceId
+        );
+
+        return provider.chatStream(enrichedMessages);
+    }
+
+    private async enrichMessagesWithContext(
+        messages: ChatMessage[],
+        pageId?: string,
+        selectedText?: string,
+        workspaceId?: string
+    ): Promise<ChatMessage[]> {
+        if (!pageId) {
+            return messages;
+        }
+
+        try {
+            // Fetch page data with content
+            const page = await this.pageService.findById(pageId, true, false, false);
+            
+            if (!page) {
+                this.logger.warn(`Page ${pageId} not found for context enrichment`);
+                return messages;
+            }
+
+            // Convert page content to HTML then to plain text
+            let pageContent = '';
+            if (page.content) {
+                try {
+                    const html = generateHTML(page.content as JSONContent, tiptapExtensions);
+                    // Strip HTML tags for plain text
+                    pageContent = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+                } catch (err) {
+                    this.logger.error(`Failed to generate HTML from page content: ${(err as Error).message}`);
+                    // Fallback: stringify the content
+                    pageContent = JSON.stringify(page.content);
+                }
+            }
+
+            // Build context message
+            let contextMessage = `You are viewing a document titled "${page.title}".`;
+            
+            if (pageContent && pageContent.length > 0) {
+                // Limit content size to avoid token limits (approx 10k chars = ~2.5k tokens)
+                const maxContentLength = 10000;
+                if (pageContent.length > maxContentLength) {
+                    pageContent = pageContent.substring(0, maxContentLength) + '... (content truncated)';
+                }
+                contextMessage += `\n\nDocument content:\n${pageContent}`;
+            }
+
+            if (selectedText && selectedText.trim().length > 0) {
+                contextMessage += `\n\nThe user has selected the following text:\n"${selectedText}"`;
+            }
+
+            contextMessage += '\n\nPlease answer the user\'s questions based on this document context.';
+
+            // Inject context as first system message or prepend to existing system message
+            const systemMessageIndex = messages.findIndex(m => m.role === 'system');
+            
+            if (systemMessageIndex >= 0) {
+                // Prepend to existing system message
+                messages[systemMessageIndex].content = contextMessage + '\n\n' + messages[systemMessageIndex].content;
+            } else {
+                // Add new system message at the beginning
+                messages = [
+                    { role: 'system', content: contextMessage },
+                    ...messages
+                ];
+            }
+
+            return messages;
+        } catch (err) {
+            this.logger.error(`Failed to enrich messages with context: ${(err as Error).message}`);
+            return messages;
+        }
     }
 
     async getModels(userId: string, workspaceId: string): Promise<string[]> {
@@ -118,9 +226,6 @@ export class AIService {
     }
 
     private async getConfiguredProvider(userId: string, workspaceId: string): Promise<AIProvider> {
-        // Verify user has access to workspace (this check is usually done in guards, but good to have)
-        // In a real scenario, we might want to check specific AI permissions here.
-
         const workspace = await this.workspaceService.findById(workspaceId);
         if (!workspace) {
             throw new NotFoundException('Workspace not found');

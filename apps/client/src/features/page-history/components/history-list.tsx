@@ -6,6 +6,8 @@ import HistoryItem from "@/features/page-history/components/history-item";
 import {
   activeHistoryIdAtom,
   historyAtoms,
+  compareModeAtom,
+  compareVersionsAtom,
 } from "@/features/page-history/atoms/history-atoms";
 import { useAtom } from "jotai";
 import { useCallback, useEffect } from "react";
@@ -32,6 +34,9 @@ interface Props {
 function HistoryList({ pageId }: Props) {
   const { t } = useTranslation();
   const [activeHistoryId, setActiveHistoryId] = useAtom(activeHistoryIdAtom);
+  const [compareMode] = useAtom(compareModeAtom);
+  const [compareVersions, setCompareVersions] = useAtom(compareVersionsAtom);
+  
   const {
     data: pageHistoryList,
     isLoading,
@@ -79,15 +84,32 @@ function HistoryList({ pageId }: Props) {
     }
   }, [activeHistoryData]);
 
+  const handleCompareSelect = (id: string) => {
+    if (!compareVersions.version1) {
+      setCompareVersions({ version1: id, version2: '' });
+    } else if (!compareVersions.version2 && id !== compareVersions.version1) {
+      setCompareVersions({ ...compareVersions, version2: id });
+    } else if (id === compareVersions.version1) {
+      setCompareVersions({ version1: compareVersions.version2, version2: '' });
+    } else if (id === compareVersions.version2) {
+      setCompareVersions({ ...compareVersions, version2: '' });
+    }
+  };
+
+  const isSelected = (id: string) => {
+    return id === compareVersions.version1 || id === compareVersions.version2;
+  };
+
   useEffect(() => {
     if (
       pageHistoryList &&
       pageHistoryList.items.length > 0 &&
-      !activeHistoryId
+      !activeHistoryId &&
+      !compareMode
     ) {
       setActiveHistoryId(pageHistoryList.items[0].id);
     }
-  }, [pageHistoryList]);
+  }, [pageHistoryList, compareMode]);
 
   if (isLoading) {
     return <></>;
@@ -103,22 +125,29 @@ function HistoryList({ pageId }: Props) {
 
   return (
     <div>
+      {compareMode && (
+        <Text size="xs" c="dimmed" mb="xs" px="xs">
+          {t("Select two versions to compare")}
+        </Text>
+      )}
+      
       <ScrollArea h={620} w="100%" type="scroll" scrollbarSize={5}>
         {pageHistoryList &&
           pageHistoryList.items.map((historyItem, index) => (
             <HistoryItem
               key={index}
               historyItem={historyItem}
-              onSelect={setActiveHistoryId}
-              isActive={historyItem.id === activeHistoryId}
+              onSelect={compareMode ? handleCompareSelect : setActiveHistoryId}
+              isActive={compareMode ? isSelected(historyItem.id) : historyItem.id === activeHistoryId}
+              compareMode={compareMode}
             />
           ))}
       </ScrollArea>
 
-      {spaceAbility.cannot(
+      {!compareMode && spaceAbility.cannot(
         SpaceCaslAction.Manage,
         SpaceCaslSubject.Page,
-      ) ? null : (
+      ) ? null : !compareMode && (
         <>
           <Divider />
           <Group p="xs" wrap="nowrap">

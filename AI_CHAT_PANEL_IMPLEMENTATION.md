@@ -178,3 +178,100 @@ None at this time.
 - Multi-language support for AI interactions
 - Custom AI prompt templates
 - AI conversation history persistence
+
+## Phase 3 Status: COMPLETE ✓
+**Date**: 2025-12-17
+**Implementation**: Live Document Editing from AI
+
+### Files Created/Modified
+
+#### New Files:
+1. **apps/client/src/features/ai/components/ai-live-editor.tsx**
+   - Component for displaying preview controls
+   - Shows preview mode badge with edit type (insert/replace/append)
+   - Apply and Discard buttons for accepting/rejecting changes
+   - Fixed position at bottom center of screen
+   - Displays preview content snippet
+
+#### Modified Files:
+1. **apps/client/src/features/ai/hooks/use-ai-live-edit.ts**
+   - Added `PreviewState` interface
+   - Added `previewEdit()` function - previews edits with green highlighting
+   - Added `applyEdit()` function - confirms and applies previewed changes
+   - Added `revertEdit()` function - undoes preview and restores original content
+   - Enhanced with state management for preview mode
+   - Integrates with TipTap highlight marks for visual feedback
+
+2. **apps/client/src/features/ai/components/ai-chat-sidebar.tsx**
+   - Integrated AILiveEditor component
+   - Added preview button (eye icon) to AI response action buttons
+   - Connected preview/apply/revert handlers
+   - Passes previewState to AILiveEditor component
+
+### Features Implemented
+
+1. **Preview Mode with Diff Highlighting**
+   - AI suggestions shown with green highlight (#d4f8d4) in document
+   - Three preview modes: insert at cursor, replace selection, append to document
+   - Non-destructive preview - can be reverted
+
+2. **Apply/Reject Controls**
+   - Floating control panel appears when preview is active
+   - "Apply Changes" button - confirms and commits the edit
+   - "Discard" button - reverts to original state
+   - Visual feedback with notifications
+
+3. **Undo Support**
+   - Uses TipTap's undo functionality
+   - Revert cleanly restores document state
+   - Preview state tracked in React state
+
+### User Flow
+
+1. User receives AI suggestion in chat
+2. Clicks preview button (eye icon)
+3. AI content appears highlighted in green in the document
+4. Control panel appears at bottom of screen
+5. User can:
+   - Apply changes → removes highlight, keeps content
+   - Discard → removes content, restores original
+
+### Technical Details
+
+- Preview uses TipTap highlight marks with custom color
+- State management via React hooks
+- Integrates with existing markdown conversion pipeline
+- Non-blocking UI - preview doesn't interfere with editing
+
+### Build & Deployment
+
+```bash
+docker compose build
+docker compose down && docker compose up -d
+```
+
+**Status**: Deployed to https://wiki.n2con.com:3050
+**Image**: docmost-ai:latest (SHA: d9a6780fb9eedcedeba7442d9d6a436a0e66bb1ba56df21029facc7a619019de)
+**Containers**: All healthy
+
+### Testing Checklist
+
+- [x] Preview insert mode shows highlighted content at cursor
+- [x] Preview replace mode replaces selection with highlight
+- [x] Preview append mode adds content at end
+- [x] Apply button commits changes successfully
+- [x] Discard button reverts changes
+- [x] Control panel shows correct mode information
+- [x] Notifications appear for all actions
+- [x] Preview works with markdown content
+- [x] Multiple preview/apply/revert cycles work correctly
+
+### Next Steps (Phase 4)
+
+Phase 4 will focus on **Version History Integration**:
+- Snapshot document state before AI edits
+- Track AI edit metadata (timestamp, prompt, affected ranges)
+- "Undo AI Changes" button in chat panel
+- List of recent AI edits with selective undo
+- Integration with existing page-history service
+

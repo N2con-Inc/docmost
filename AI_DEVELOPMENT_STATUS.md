@@ -1,99 +1,26 @@
-# DocMost AI Development Status
-**Last Updated**: 2025-12-06
+# Docmost AI Integration - Development Status
+
+**Last Updated**: 2025-12-17
 **Branch**: main
-**Status**: ✓ Production Ready
+**Status**: ✓ Production Ready - Phase 3 Complete
 
-## Overview
-Successfully implemented AI-powered features for DocMost wiki application, including AI chat assistant and text improvement tools with a comprehensive sidebar interface.
+## Deployment Information
 
-## Completed Features
-
-### 1. AI Settings Configuration ✓
-**Location**: Settings > General > AI Settings
-- Multi-provider support: Ollama, OpenAI, Anthropic
-- API key management
-- Model fetching and selection
-- Settings persistence in workspace configuration
-- Fixed API endpoints (POST /workspace/info, POST /workspace/update)
-- Fixed DTO validation for settings field
-- Model refresh functionality working
-
-### 2. AI Chat Assistant ✓
-**Location**: Available in page editor
-- Real-time chat interface
-- Context-aware responses
-- Workspace settings integration
-- Provider-specific model support
-
-### 3. AI Text Improvement Assistant ✓
-**Location**: Editor bubble menu (sparkle icon appears when text is selected)
-
-#### Features:
-- **Interactive Bubble Menu**: Sparkle icon appears on text selection
-- **Dedicated Sidebar**: Full-featured AI assistant panel
-- **Custom Instructions**: Free-form text input for specific improvements
-- **Quick Actions**: 
-  - Improve Writing (clarity & grammar)
-  - Make Concise
-  - Expand with Details
-  - Make Professional
-  - Fix Grammar & Spelling
-- **Inline Diff View**: Word-by-word comparison with color coding
-  - Removed text: Red background with strikethrough
-  - Added text: Green background
-  - Unchanged text: No highlighting
-- **Dual Preview**: 
-  - Changes preview with inline diff
-  - Full result view with markdown
-- **Markdown Preservation**: Explicit AI prompting to maintain markdown formatting
-- **Apply/Discard Controls**: User approval before changes are applied
-- **Scrollable Views**: Handles large text blocks efficiently
-
-#### Technical Implementation:
-- Component: `apps/client/src/features/ai/components/ai-assistant-sidebar.tsx`
-- Menu: `apps/client/src/features/ai/editor/ai-menu.tsx`
-- Dependencies: `diff` (v5.2.0), `@types/diff` (v5.2.3)
-- Integration: TipTap editor with proper markdown parsing
-- Color Scheme: High contrast for readability (#1a1b1e text on gray.0 background)
-
-## Bug Fixes Completed
-
-### AI Settings Issues
-1. ✓ Fixed wrong API endpoints (was using /workspaces/current)
-2. ✓ Added missing settings field to UpdateWorkspaceDto
-3. ✓ Fixed model fetch timing and state management
-4. ✓ Resolved "Failed to save settings" errors
-
-### Text Improvement Issues
-1. ✓ Fixed AI not receiving selected text context
-2. ✓ Fixed bubble menu disappearing on interaction (added interactive: true, hideOnClick: false)
-3. ✓ Fixed text contrast (black text on light gray background)
-4. ✓ Fixed markdown formatting preservation in applied changes
-5. ✓ Improved diff highlighting with better color contrast
-
-## Database & Infrastructure
-
-### Database Configuration
-- **Image**: pgvector/pgvector:pg16
-- **Extensions**: pgvector for embeddings support
-- **Migrations**: Fixed UUID v7 function (gen_uuid_v7)
-- **Tables**: embeddings table created and operational
-
-### Storage
-- **Provider**: S3 (Wasabi)
-- **Region**: us-west-1
-- **Bucket**: n2con-docmost
-
-### Deployment
-- **Method**: Docker Compose
-- **Image**: docmost-ai:latest (built from source)
-- **Port**: 3050 (external) → 3000 (internal)
+- **Environment**: Docker Compose Stack
+- **Image**: docmost-ai:latest (SHA: d9a6780fb9eedcedeba7442d9d6a436a0e66bb1ba56df21029facc7a619019de)
 - **URL**: https://wiki.n2con.com:3050
+- **Containers**: 
+  - docmost (main app) - Port 3050:3000
+  - db (PostgreSQL with pgvector)
+  - redis
+  - db-backup
 
-## Data Migration
-- **Source**: Production instance at /pool/data/docmost/
-- **Target**: AI instance at /pool/data/docmost-AI/
-- **Status**: ✓ Complete
+## Data Migration Status
+
+✓ **Complete** - Production data successfully migrated
+
+- **Source**: /pool/data/docmost/
+- **Target**: /pool/data/docmost-AI/
 - **Migrated Data**:
   - 1 workspace
   - 7 users
@@ -102,88 +29,195 @@ Successfully implemented AI-powered features for DocMost wiki application, inclu
   - 7 attachments
   - 14 comments
 
-## Code Changes Summary
+## Feature Implementation Progress
 
-### Modified Files
-1. **docker-compose.yml**: Added build section for custom image
-2. **apps/server/package.json**: Added @langchain/ollama dependency
-3. **apps/server/src/database/migrations/20251130T154600-create-embeddings-table.ts**: Fixed UUID function
-4. **apps/client/src/features/ai/components/ai-settings.tsx**: Fixed endpoints and model fetching
-5. **apps/server/src/core/workspace/dto/update-workspace.dto.ts**: Added settings field
-6. **apps/client/src/features/ai/components/ai-assistant-sidebar.tsx**: Complete text improvement UI
-7. **apps/client/src/features/ai/editor/ai-menu.tsx**: Bubble menu integration
-8. **apps/client/package.json**: Added diff and @types/diff dependencies
+### Phase 1: AI Chat Panel ✓ COMPLETE
+**Status**: Implemented and deployed
+**Date**: 2025-12-16
 
-### New Features Added
-- AI settings management UI
-- Text selection bubble menu with sparkle icon
-- AI assistant sidebar with diff view
-- Word-by-word change tracking
-- Markdown-aware text processing
-- Quick action templates
+Features:
+- AI button in page header with keyboard shortcut (Cmd+K / Ctrl+K)
+- Chat sidebar with context awareness
+- Smart content extraction
+- Basic insert/replace/copy actions
+- Page context integration
 
-## Testing Status
-- ✓ AI provider configuration (Ollama, OpenAI, Anthropic)
-- ✓ Model fetching and selection
-- ✓ Settings persistence
-- ✓ Text selection and bubble menu appearance
-- ✓ AI text improvement with custom instructions
-- ✓ Quick action buttons
-- ✓ Diff view with color coding
-- ✓ Markdown formatting preservation
-- ✓ Apply/discard functionality
-- ✓ Large text handling with scroll areas
+### Phase 2: Context Awareness & Streaming
+**Status**: Partially implemented
+
+Features:
+- Basic context extraction working
+- Page-level context available
+- Streaming responses: NOT YET IMPLEMENTED
+
+### Phase 3: Live Document Editing ✓ COMPLETE
+**Status**: Implemented and deployed
+**Date**: 2025-12-17
+
+Features:
+- Preview mode with green highlighting
+- Three preview modes: insert, replace, append
+- Apply/reject controls with floating UI
+- Undo support via TipTap
+- Non-destructive preview
+- Visual feedback with notifications
+
+New/Modified Files:
+- apps/client/src/features/ai/components/ai-live-editor.tsx (NEW)
+- apps/client/src/features/ai/hooks/use-ai-live-edit.ts (ENHANCED)
+- apps/client/src/features/ai/components/ai-chat-sidebar.tsx (UPDATED)
+
+### Phase 4: Version History Integration
+**Status**: Not started
+
+Planned Features:
+- Snapshot document state before AI edits
+- Track AI edit metadata (timestamp, prompt, ranges)
+- "Undo AI Changes" button in chat
+- List of recent AI edits with selective undo
+- Integration with page-history service
+
+### Phase 5: Multi-Document Context Awareness
+**Status**: Not started
+
+Planned Features:
+- Backend accepts pageId and includeRelatedDocs flag
+- Use embeddings service for related documents
+- Include document summaries in AI context
+- Frontend toggle for related documents
+- Display context sources in chat
+
+### Phase 6: UI/UX Polish
+**Status**: Not started
+
+Planned Features:
+- Animated loading states
+- Optimistic UI updates
+- Additional keyboard shortcuts
+- Enhanced visual feedback
+
+## Core AI Features
+
+### AI Settings Page ✓
+- OpenAI API key configuration
+- Model selection (GPT-4, GPT-3.5 Turbo)
+- Custom API base URL support
+- Settings validation
+- Secure key storage
+
+### AI Text Improvement ✓
+- Inline diff view (word-by-word)
+- Markdown-aware improvements
+- Quick action buttons:
+  - Make it shorter
+  - Make it longer
+  - Simplify language
+  - Improve clarity
+  - Fix grammar & spelling
+- Custom instruction support
+- Two-view layout (diff + full result)
+- Apply/Discard controls
+
+### AI Chat Assistant ✓
+- Conversational interface
+- Context-aware responses
+- Page-specific discussions
+- Message history
+- Smart content extraction
+- Multi-action buttons per response
+- Live preview mode
+
+## Technical Stack
+
+### Frontend
+- React with TypeScript
+- TipTap editor extensions
+- Mantine UI components
+- Jotai state management
+- diff package (v5.2.0) for text comparison
+
+### Backend
+- Node.js/NestJS
+- PostgreSQL with pgvector
+- Redis for caching
+- OpenAI API integration
+
+### Infrastructure
+- Docker Compose
+- PostgreSQL 16 with pgvector extension
+- Redis 7.2
+- Automated database backups
 
 ## Known Limitations
-- Diff view is word-based (not line-based) - intentional for better granularity
-- Very large text blocks (>10KB) may take longer to process
-- Diff rendering performance depends on text size
 
-## Build & Deployment Process
+1. **Streaming responses not implemented** - Responses load all at once
+2. **Version history tracking** - AI edits not yet tracked in version history
+3. **Multi-document context** - Related documents not automatically included
+4. **Preview highlighting** - Uses TipTap marks, may have edge cases with complex content
+
+## Next Development Steps
+
+1. **Phase 4: Version History Integration**
+   - Implement AI edit tracking
+   - Add undo history UI
+   - Integrate with page history service
+
+2. **Complete Phase 2: Streaming**
+   - Implement streaming endpoint usage
+   - Add typewriter effect for responses
+   - Improve loading indicators
+
+3. **Phase 5: Multi-Document Context**
+   - Enhance backend context gathering
+   - Implement embeddings-based document retrieval
+   - Add UI controls for context inclusion
+
+## Testing Status
+
+### Manual Testing
+- ✓ AI settings configuration
+- ✓ AI text improvement with diff view
+- ✓ AI chat basic functionality
+- ✓ Chat context awareness
+- ✓ Content insertion/replacement
+- ✓ Preview mode (Phase 3)
+- ✓ Apply/reject controls (Phase 3)
+- ⏳ Streaming responses (not implemented)
+- ⏳ Version history integration (not implemented)
+
+### Integration Testing
+- ✓ Docker build and deployment
+- ✓ Database migrations
+- ✓ Data persistence
+- ✓ Multi-container orchestration
+
+## Documentation
+
+- AI_CHAT_PANEL_IMPLEMENTATION.md - Detailed phase-by-phase implementation notes
+- AI_ASSISTANT_IMPROVEMENTS.md - Text improvement feature documentation
+- AI_SETTINGS_FIX.md - Settings page implementation notes
+- MIGRATION_COMPLETE.md - Data migration documentation
+
+## Deployment Commands
+
 ```bash
-# Build custom image
-cd /pool/data/docmost-AI
+# Build image
 docker compose build
 
 # Deploy
-docker compose down
-docker compose up -d
+docker compose down && docker compose up -d
 
-# Verify
+# Check status
 docker compose ps
+
+# View logs
 docker compose logs -f docmost
 ```
 
-## Documentation Files
-- `README_APPS.md` - Application inventory
-- `MIGRATION_NOTES.md` - Initial migration planning
-- `MIGRATION_COMPLETE.md` - Migration execution details
-- `AI_SETTINGS_FIX.md` - AI settings bug fixes
-- `AI_ASSISTANT_IMPROVEMENTS.md` - Sidebar enhancement details
-- `AI_DEVELOPMENT_STATUS.md` - This file
+## Version Information
 
-## Next Steps (Future Enhancements)
-If additional features are requested:
-1. Line-by-line diff toggle option
-2. Copy-to-clipboard for improved text
-3. Undo/redo for applied changes
-4. Additional preset instruction templates
-5. Batch text improvement for multiple selections
-6. AI-powered text generation (not just improvement)
-7. Integration with page-level AI analysis
+- **Build**: Phase 3 Complete (2025-12-17)
+- **Image SHA**: d9a6780fb9eedcedeba7442d9d6a436a0e66bb1ba56df21029facc7a619019de
+- **Container Status**: All healthy
+- **Response Code**: 200 OK
 
-## Repository
-- **GitHub**: git@github.com:N2con-Inc/docmost.git
-- **Branch**: main
-- **Location**: /pool/data/docmost-AI
-
-## Success Criteria - All Met ✓
-- [x] Clone and build custom DocMost instance with AI features
-- [x] Migrate production data to AI-enabled database
-- [x] Fix AI settings save functionality
-- [x] Fix model fetching for all providers
-- [x] Implement text selection and AI improvement
-- [x] Create user-friendly diff view
-- [x] Preserve markdown formatting
-- [x] Deploy and test on production URL
-- [x] Document all changes and configurations

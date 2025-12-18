@@ -1,16 +1,21 @@
-import { Body, Controller, Post, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Post, Res, UseGuards, Delete, Param } from '@nestjs/common';
 import { AIService } from './ai.service';
 import { ChatRequestDto } from './dto/chat-request.dto';
 import { SearchRequestDto } from './dto/search-request.dto';
+import { LiveEditRequestDto, LiveEditResponseDto, CancelEditResponseDto } from './dto/live-edit-request.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { AuthUser } from '../common/decorators/auth-user.decorator';
 import { User } from '@docmost/db/types/entity.types';
 import { Response } from 'express';
+import { AICollabEditorService } from './services/ai-collab-editor.service';
 
 @Controller('ai')
 @UseGuards(JwtAuthGuard)
 export class AIController {
-    constructor(private readonly aiService: AIService) { }
+    constructor(
+        private readonly aiService: AIService,
+        private readonly aiCollabEditorService: AICollabEditorService,
+    ) { }
 
     @Post('chat')
     async chat(@AuthUser() user: User, @Body() body: ChatRequestDto) {
@@ -44,6 +49,38 @@ export class AIController {
         res.setHeader('Connection', 'keep-alive');
 
         stream.pipe(res);
+    }
+
+    @Post('chat/live-edit')
+    async liveEdit(@AuthUser() user: User, @Body() body: LiveEditRequestDto): Promise<LiveEditResponseDto> {
+        const result = await this.aiCollabEditorService.applyLiveEdit({
+            pageId: body.pageId,
+            content: body.content,
+            mode: body.mode,
+            position: body.position,
+            workspaceId: user.workspaceId,
+            userId: user.id,
+            typingSpeed: body.typingSpeed || 50,
+        });
+
+        return {
+            success: result.success,
+            operationId: result.operationId,
+            message: 'AI edit applied successfully',
+        };
+    }
+
+    @Delete('chat/live-edit/:operationId')
+    async cancelLiveEdit(
+        @AuthUser() user: User,
+        @Param('operationId') operationId: string
+    ): Promise<CancelEditResponseDto> {
+        const success = await this.aiCollabEditorService.cancelEdit(operationId);
+        
+        return {
+            success,
+            operationId,
+        };
     }
 
     @Post('models')

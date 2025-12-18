@@ -1,15 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAIContext } from '../context/ai-provider';
 import { useAI } from '../hooks/use-ai';
-import { useAILiveEdit } from '../hooks/use-ai-live-edit';
 import { getInsertableContent, extractInsertableContent } from '../utils/content-extractor';
-import { ActionIcon, Badge, Box, Button, Group, ScrollArea, Stack, Switch, Text, Textarea, Title, Loader, Tooltip } from '@mantine/core';
-import { IconX, IconSend, IconRobot, IconCopy, IconArrowBigDownLine, IconReplace, IconSparkles } from '@tabler/icons-react';
+import { ActionIcon, Badge, Box, Button, Group, ScrollArea, Stack, Text, Textarea, Title, Loader, Tooltip } from '@mantine/core';
+import { IconX, IconSend, IconRobot, IconCopy, IconArrowBigDownLine, IconReplace, IconSparkles, IconTrash } from '@tabler/icons-react';
 import { useParams } from 'react-router-dom';
 import { extractPageSlugId } from '@/lib';
 import { usePageQuery } from '@/features/page/queries/page-query';
 import { useAtom } from 'jotai';
 import { pageEditorAtom } from '@/features/editor/atoms/editor-atoms';
+import { notifications } from '@mantine/notifications';
+import axios from 'axios';
 
 export function AIChatSidebar() {
     const { isChatOpen, toggleChat } = useAIContext();
@@ -23,7 +24,7 @@ export function AIChatSidebar() {
     const pageId = extractPageSlugId(pageSlug);
     const { data: page } = usePageQuery({ pageId });
     const [pageEditor] = useAtom(pageEditorAtom);
-    const { insertAtCursor, replaceSelection, copyToClipboard } = useAILiveEdit({ editor: pageEditor });
+    const [currentPageId, setCurrentPageId] = useState<string | undefined>(pageId);
 
     useEffect(() => {
         if (scrollViewport.current) {
@@ -31,9 +32,11 @@ export function AIChatSidebar() {
         }
     }, [messages, isLoading]);
 
-    // Clear chat when navigating to a different page
+    // Update current page context when navigating (but don't clear chat)
     useEffect(() => {
-        clearChat();
+        if (pageId !== currentPageId) {
+            setCurrentPageId(pageId);
+        }
     }, [pageId]);
 
     if (!isChatOpen) return null;
@@ -51,7 +54,7 @@ export function AIChatSidebar() {
         }
 
         sendMessage(input, { 
-            pageId,
+            pageId: currentPageId,
             selectedText,
             includeRelatedDocs,
             includeWikiStructure,
@@ -67,19 +70,65 @@ export function AIChatSidebar() {
         }
     };
 
-    const handleInsertAtCursor = (content: string) => {
-        const extracted = getInsertableContent(content);
-        insertAtCursor(extracted);
-    };
+    const handleLiveEdit = async (content: string, mode: 'insert' | 'replace' | 'append') => {
+        try {
+            const extracted = getInsertableContent(content);
+            
+            let position: { from: number; to: number } | undefined;
+            if (pageEditor?.state?.selection) {
+                const { from, to } = pageEditor.state.selection;
+                position = { from, to };
+            }
 
-    const handleReplaceSelection = (content: string) => {
-        const extracted = getInsertableContent(content);
-        replaceSelection(extracted);
+            const response = await axios.post('/api/ai/chat/live-edit', {
+                pageId: currentPageId,
+                content: extracted,
+                mode,
+                position,
+            });
+
+            if (response.data.success) {
+                notifications.show({
+                    title: 'Success',
+                    message: 'AI is applying changes...',
+                    color: 'blue',
+                });
+            }
+        } catch (error) {
+            notifications.show({
+                title: 'Error',
+                message: 'Failed to apply AI edit',
+                color: 'red',
+            });
+        }
     };
 
     const handleCopy = (content: string) => {
-        const extracted = getInsertableContent(content);
-        copyToClipboard(extracted);
+        try {
+            const extracted = getInsertableContent(content);
+            navigator.clipboard.writeText(extracted);
+            notifications.show({
+                title: 'Success',
+                message: 'Copied to clipboard',
+                color: 'green',
+            });
+        } catch (error) {
+            notifications.show({
+                title: 'Error',
+                message: 'Failed to copy to clipboard',
+                color: 'red',
+            });
+        }
+    };
+
+    const handleNewChat = () => {
+        clearChat();
+        notifications.show({
+            title: 'Chat Cleared',
+            message: 'Started a new conversation',
+            color: 'blue',
+            autoClose: 2000,
+        });
     };
 
     return (
@@ -103,15 +152,26 @@ export function AIChatSidebar() {
                     <IconRobot size={20} />
                     <Title order={5}>AI Assistant</Title>
                 </Group>
-                <ActionIcon variant="subtle" onClick={toggleChat}>
-                    <IconX size={20} />
-                </ActionIcon>
+                <Group gap="xs">
+                    <Tooltip label="New Chat">
+                        <ActionIcon 
+                            variant="subtle" 
+                            onClick={handleNewChat}
+                            disabled={messages.length === 0}
+                        >
+                            <IconTrash size={18} />
+                        </ActionIcon>
+                    </Tooltip>
+                    <ActionIcon variant="subtle" onClick={toggleChat}>
+                        <IconX size={20} />
+                    </ActionIcon>
+                </Group>
             </Group>
 
             {page && (
                 <Box p="xs" px="md" style={{ backgroundColor: 'var(--mantine-color-gray-light)', borderBottom: '1px solid var(--mantine-color-default-border)' }}>
                     <Text size="xs" c="dimmed">
-                        Discussing: <Text span fw={500} c="dark">{page.title}</Text>
+                        Current page: <Text span fw={500} >{page.title}</Text>
                     </Text>
                 </Box>
             )}
@@ -148,7 +208,7 @@ export function AIChatSidebar() {
                                                 size="sm" 
                                                 variant="light" 
                                                 color="blue"
-                                                onClick={() => handleInsertAtCursor(msg.content)}
+                                                onClick={() => handleLiveEdit(msg.content, 'insert')}
                                             >
                                                 <IconArrowBigDownLine size={14} />
                                             </ActionIcon>
@@ -159,7 +219,7 @@ export function AIChatSidebar() {
                                                 size="sm" 
                                                 variant="light" 
                                                 color="grape"
-                                                onClick={() => handleReplaceSelection(msg.content)}
+                                                onClick={() => handleLiveEdit(msg.content, 'replace')}
                                             >
                                                 <IconReplace size={14} />
                                             </ActionIcon>

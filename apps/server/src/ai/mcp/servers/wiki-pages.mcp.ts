@@ -167,7 +167,7 @@ export class WikiPagesMCP {
                             let info = `- **${name}** (${att.mimeType}, ${size})`;
                             
                             if (att.textContent && att.textContent.length > 0) {
-                                info += `\n  Content excerpt: ${att.textContent.substring(0, 500)}...`;
+                                info += `\n  Full Content:\n${att.textContent}`;
                             }
                             
                             return info;

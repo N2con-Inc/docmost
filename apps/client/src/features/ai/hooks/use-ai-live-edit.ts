@@ -1,11 +1,20 @@
 import { Editor } from '@tiptap/react';
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { notifications } from '@mantine/notifications';
 import { markdownToHtml } from '@docmost/editor-ext';
 import { DOMParser } from '@tiptap/pm/model';
+import { Mark } from '@tiptap/pm/model';
 
 export interface AILiveEditOptions {
     editor: Editor | null;
+}
+
+export interface PreviewState {
+    isActive: boolean;
+    originalContent: any;
+    previewContent: string;
+    range: { from: number; to: number } | null;
+    mode: 'insert' | 'replace' | 'append';
 }
 
 /**
@@ -34,7 +43,171 @@ async function convertMarkdownForEditor(markdown: string, editor: Editor): Promi
 }
 
 export function useAILiveEdit({ editor }: AILiveEditOptions) {
-    
+    const [previewState, setPreviewState] = useState<PreviewState>({
+        isActive: false,
+        originalContent: null,
+        previewContent: '',
+        range: null,
+        mode: 'insert',
+    });
+
+    /**
+     * Preview an edit before applying it
+     */
+    const previewEdit = useCallback(async (
+        content: string, 
+        mode: 'insert' | 'replace' | 'append' = 'insert'
+    ) => {
+        if (!editor) {
+            notifications.show({
+                title: 'Error',
+                message: 'Editor not available',
+                color: 'red',
+            });
+            return false;
+        }
+
+        try {
+            const { from, to } = editor.state.selection;
+            let range = { from, to };
+
+            // Store original content
+            let originalContent;
+            if (mode === 'replace') {
+                originalContent = editor.state.doc.slice(from, to);
+            } else if (mode === 'append') {
+                const endPos = editor.state.doc.content.size;
+                range = { from: endPos, to: endPos };
+                originalContent = null;
+            } else {
+                originalContent = null;
+            }
+
+            // Convert Markdown to editor format
+            const editorContent = await convertMarkdownForEditor(content, editor);
+
+            // Apply temporary preview with highlight mark
+            const tr = editor.state.tr;
+            
+            if (mode === 'replace') {
+                tr.delete(from, to);
+                tr.insert(from, editorContent);
+                // Add preview mark
+                tr.addMark(from, from + editorContent.size, editor.schema.marks.highlight.create({ color: '#d4f8d4' }));
+            } else if (mode === 'insert') {
+                tr.insert(from, editorContent);
+                tr.addMark(from, from + editorContent.size, editor.schema.marks.highlight.create({ color: '#d4f8d4' }));
+            } else if (mode === 'append') {
+                const endPos = editor.state.doc.content.size;
+                tr.insert(endPos, editorContent);
+                tr.addMark(endPos, endPos + editorContent.size, editor.schema.marks.highlight.create({ color: '#d4f8d4' }));
+            }
+
+            editor.view.dispatch(tr);
+
+            setPreviewState({
+                isActive: true,
+                originalContent,
+                previewContent: content,
+                range,
+                mode,
+            });
+
+            notifications.show({
+                title: 'Preview Active',
+                message: 'Review changes and apply or discard',
+                color: 'blue',
+                autoClose: 3000,
+            });
+
+            return true;
+        } catch (error) {
+            console.error('Preview error:', error);
+            notifications.show({
+                title: 'Error',
+                message: 'Failed to preview changes',
+                color: 'red',
+            });
+            return false;
+        }
+    }, [editor]);
+
+    /**
+     * Apply the previewed edit
+     */
+    const applyEdit = useCallback(() => {
+        if (!editor || !previewState.isActive) {
+            return false;
+        }
+
+        try {
+            // Remove highlight marks
+            const tr = editor.state.tr;
+            tr.removeMark(0, editor.state.doc.content.size, editor.schema.marks.highlight);
+            editor.view.dispatch(tr);
+
+            setPreviewState({
+                isActive: false,
+                originalContent: null,
+                previewContent: '',
+                range: null,
+                mode: 'insert',
+            });
+
+            notifications.show({
+                title: 'Success',
+                message: 'Changes applied',
+                color: 'green',
+            });
+
+            return true;
+        } catch (error) {
+            notifications.show({
+                title: 'Error',
+                message: 'Failed to apply changes',
+                color: 'red',
+            });
+            return false;
+        }
+    }, [editor, previewState]);
+
+    /**
+     * Revert the previewed edit
+     */
+    const revertEdit = useCallback(() => {
+        if (!editor || !previewState.isActive) {
+            return false;
+        }
+
+        try {
+            // Undo the last transaction(s) to restore original state
+            editor.commands.undo();
+
+            setPreviewState({
+                isActive: false,
+                originalContent: null,
+                previewContent: '',
+                range: null,
+                mode: 'insert',
+            });
+
+            notifications.show({
+                title: 'Reverted',
+                message: 'Changes discarded',
+                color: 'gray',
+            });
+
+            return true;
+        } catch (error) {
+            notifications.show({
+                title: 'Error',
+                message: 'Failed to revert changes',
+                color: 'red',
+            });
+            return false;
+        }
+    }, [editor, previewState]);
+
     const insertAtCursor = useCallback(async (content: string) => {
         if (!editor) {
             notifications.show({
@@ -178,5 +351,9 @@ export function useAILiveEdit({ editor }: AILiveEditOptions) {
         replaceSelection,
         appendToDocument,
         copyToClipboard,
+        previewEdit,
+        applyEdit,
+        revertEdit,
+        previewState,
     };
 }

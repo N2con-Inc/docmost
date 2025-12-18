@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { AIController } from './ai.controller';
 import { AIService } from './ai.service';
 import { EmbeddingsService } from './embeddings.service';
+import { AICollabEditorService } from './services/ai-collab-editor.service';
 import { ConfigModule } from '@nestjs/config';
 import { WorkspaceModule } from '../core/workspace/workspace.module';
 import { PageModule } from '../core/page/page.module';
@@ -24,7 +25,27 @@ import { WikiPagesMCP } from './mcp/servers/wiki-pages.mcp';
         DatabaseModule,
     ],
     controllers: [AIController],
-    providers: [AIService, EmbeddingsService, WebSearchService, RefactorAgent, ConsistencyAgent, McpService, StyleGuideMCP, MicrosoftLearnMCP, MicrosoftGraphMCP, WikiPagesMCP],
-    exports: [AIService, EmbeddingsService, WebSearchService, RefactorAgent, ConsistencyAgent, McpService],
+    providers: [
+        AIService, 
+        EmbeddingsService, 
+        AICollabEditorService,
+        WebSearchService, 
+        RefactorAgent, 
+        ConsistencyAgent, 
+        McpService, 
+        StyleGuideMCP, 
+        MicrosoftLearnMCP, 
+        MicrosoftGraphMCP, 
+        WikiPagesMCP
+    ],
+    exports: [
+        AIService, 
+        EmbeddingsService, 
+        AICollabEditorService,
+        WebSearchService, 
+        RefactorAgent, 
+        ConsistencyAgent, 
+        McpService
+    ],
 })
 export class AIModule { }
